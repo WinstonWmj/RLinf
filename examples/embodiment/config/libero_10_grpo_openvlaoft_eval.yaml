@@ -15,8 +15,7 @@ hydra:
 cluster:
   num_nodes: 1
   component_placement:
-    env: 0,1
-    rollout: 2,3
+    actor,env,rollout: all
 
 runner:
   task_type: embodied
@@ -138,7 +137,7 @@ actor:
 
   tokenizer:
     tokenizer_type: "HuggingFaceTokenizer"
-    tokenizer_model: "/mnt/mnt/public/mjwei/download_models/Haozhan72/Openvla-oft-SFT-libero10-traj1/"
+    tokenizer_model: "/path/to/model/Openvla-oft-SFT-libero10-traj1/"
     use_fast: False
     trust_remote_code: True
     padding_side: "right"
