@@ -183,6 +183,7 @@ class MultiStepRolloutWorker(Worker):
             // self.cfg.actor.model.num_action_chunks
         )
 
+        import time
         for _ in tqdm(
             range(self.cfg.algorithm.rollout_epoch),
             desc="Generating Rollout Epochs",
