@@ -250,14 +250,10 @@ class PickSubtaskTrainEnv(SubtaskTrainEnv):
             id.split('_', 1)[1].rsplit('-', 1)[0].replace('_', ' ')
             for id in obj_ids
         ]
-        # breakpoint()
-        # self.subtask_objs
-        # obj_name = ["pick up this object."] * self.num_envs
-        
+        # print(obj_name)  # ['apple', 'bowl', 'apple', 'apple', 'bowl', 'bowl']
         instruct = []
         for idx in range(self.num_envs):
-            instruct.append(f"pick {obj_name}.") 
-
+            instruct.append(f"pick {obj_name[idx]}")  # In: What action should the robot take to {pick apple}?\nOut: 
         return instruct
 
     def evaluate(self):

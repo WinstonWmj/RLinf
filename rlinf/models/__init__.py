@@ -165,9 +165,11 @@ def get_model(cfg: DictConfig, override_config_kwargs=None):
             # attn_implementation="flash_attention_2",
             config=actor_model_config,
             action_dim=cfg.action_dim,
+            proprio_dim=cfg.proprio_dim,
             num_action_chunks=cfg.num_action_chunks,
             trust_remote_code=True,
             add_value_head=cfg.add_value_head,
+            use_proprio=cfg.use_proprio,
         )
 
         # oft add
@@ -369,6 +371,9 @@ def get_model(cfg: DictConfig, override_config_kwargs=None):
 
         if hasattr(model, "value_head"):
             for param in model.value_head.parameters():
+                param.requires_grad = True
+        if hasattr(model, "proprio_projector"):
+            for param in model.proprio_projector.parameters():
                 param.requires_grad = True
 
     return model

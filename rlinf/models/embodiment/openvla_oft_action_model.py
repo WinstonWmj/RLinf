@@ -35,11 +35,12 @@ from rlinf.models.embodiment.model_utils import (
     compute_logprobs_from_logits,
 )
 from rlinf.models.embodiment.modules.value_head import ValueHead
+from rlinf.models.embodiment.modules.proproi_projector import ProprioProjector
 
 
 class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
     def __init__(
-        self, config: OpenVLAOFTConfig, action_dim, num_action_chunks, add_value_head
+        self, config: OpenVLAOFTConfig, action_dim, proprio_dim, num_action_chunks, add_value_head, use_proprio
     ) -> None:
         super().__init__(config)
 
@@ -68,14 +69,20 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
                 activation="gelu",
                 bias_last=False,
             )
+        if use_proprio:
+            self.proprio_projector = ProprioProjector(
+                llm_dim=self.hidden_size,
+                proprio_dim=proprio_dim,
+            )
 
-    def _build_embedding(self, input_ids, attention_mask, pixel_values):
+
+    def _build_embedding(self, input_ids, attention_mask, pixel_values, proprio):
         assert torch.all(input_ids[:, -1] == STOP_INDEX)
         assert input_ids.shape[0] == attention_mask.shape[0]
         assert input_ids.shape[1] == attention_mask.shape[1]
 
-        input_ids = input_ids[:, :-1]
-        attention_mask = attention_mask[:, :-1]
+        # input_ids = input_ids[:, :-1]  # mjwei NOTE: following the official implementation in OpenVLA-OFT, we should keep the last token(EOS token).
+        # attention_mask = attention_mask[:, :-1]
 
         n_patch_tokens = (
             self.vision_backbone.get_num_patches()
@@ -84,11 +91,11 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
 
         # llm label & mask & embedding
         all_actions_mask = torch.zeros_like(input_ids, dtype=torch.bool)
-        all_actions_mask[:, -self.action_dim * self.num_action_chunks :] = (
+        all_actions_mask[:, -1 - self.action_dim * self.num_action_chunks :] = (
             True  # [B, L + act + 1], [many x 0; act x 1; 0]
         )
-
-        input_embeddings = self.get_input_embeddings()(input_ids)  # [B, L + act + 1, D]
+        billm_embeddings = self.get_input_embeddings()
+        input_embeddings = billm_embeddings(input_ids)  # [B, L + act + 1, D]  # 128 + action_dim*actionchunk, without <EOS> token!
         input_embeddings = input_embeddings * (~all_actions_mask.unsqueeze(-1))
 
         # vision
@@ -96,12 +103,25 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
             pixel_values, None, use_film=False
         )
         # [B, 256 * num_images, D]
-        assert projected_patch_embeddings.shape[1] == n_patch_tokens
+        assert projected_patch_embeddings.shape[1] == n_patch_tokens  # 512
 
+        # add proprio embedding:
+        if hasattr(self, "proprio_projector") is not None and proprio is not None:
+            proprio = torch.Tensor(proprio).to(projected_patch_embeddings.device, dtype=projected_patch_embeddings.dtype)
+            # projected_patch_embeddings: (bsz, num_patches * num_images, llm_dim)
+            # proprio: (bsz, proprio_dim) or (propro_dim,)
+            proprio = proprio.reshape(projected_patch_embeddings.shape[0], -1)  # (bsz, proprio_dim)  # projected_patch_embeddings.shape = torch.Size([20, 512, 4096])
+            proprio_features = self.proprio_projector(proprio)  # (bsz, llm_dim)
+            proprio_features = proprio_features.unsqueeze(dim=1)  # (bsz, 1, llm_dim)
+            # For simplicity, just append proprio token to the end of projected vision patch tokens
+            projected_patch_embeddings = torch.cat((projected_patch_embeddings, proprio_features), dim=1)
+        
         # multimodal embeddings
         projected_patch_embeddings = projected_patch_embeddings.reshape(
             input_embeddings.shape[0], -1, *projected_patch_embeddings.shape[2:]
         )
+
+        # Build multimodal embeddings & attention mask; insert embeddings after <BOS> token (1:)
         multimodal_embeddings, multimodal_attention_mask = (
             self._build_multimodal_attention(
                 input_embeddings, projected_patch_embeddings, attention_mask
@@ -293,6 +313,8 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
             self.vision_backbone.get_num_patches()
             * self.vision_backbone.get_num_images_in_input()
         )
+        if hasattr(self, "proprio_projector"):
+            n_patches += 1
 
         # llm inputs
         input_ids, attention_mask = self._prepare_input_for_action_prediction(
@@ -305,7 +327,7 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
 
         # multimodal
         mm_embeddings, mm_attention_mask = self._build_embedding(
-            input_ids, attention_mask, pixel_values
+            input_ids, attention_mask, pixel_values, proprio=env_obs["states"]
         )
         multimodal_position_ids = mm_attention_mask.cumsum(dim=1) - 1
 

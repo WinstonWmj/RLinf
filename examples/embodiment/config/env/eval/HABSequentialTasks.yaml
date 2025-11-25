@@ -16,13 +16,12 @@ video_cfg:
   info_on_video: True
   video_base_dir: ${runner.logger.log_path}/video/eval
 
-MS_ASSET_DIR: "/mnt/mnt/public/mjwei/download_models/arth-shukla/ReplicaCAD"
 TASK: set_table
 SUBTASK: sequential
 SPLIT: train
 OBJ: all
-task_plan_fp: "${MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/${TASK}/${SUBTASK}/${SPLIT}/${OBJ}.json"
-spawn_data_fp: "${MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/${TASK}/${SUBTASK}/${SPLIT}/spawn_data.pt"
+task_plan_fp: "${os.env:MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/${TASK}/${SUBTASK}/${SPLIT}/${OBJ}.json"
+spawn_data_fp: "${os.env:MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/${TASK}/${SUBTASK}/${SPLIT}/spawn_data.pt"
 
 init_params:
   id: "SequentialTask-v0"

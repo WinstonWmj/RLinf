@@ -1,4 +1,5 @@
 import hydra
+import torch
 import numpy as np
 from tqdm import tqdm
 
@@ -25,8 +26,9 @@ def main(cfg) -> None:
     a = np.random.random((cfg.env.train.num_envs, cfg.actor.model.action_dim))  # fetch robot's action dim = 13
     for i in tqdm(range(1, 30)):
         # a = np.zeros((10, 13))
-        env.step(a)
-
+        extracted_obs, step_reward, terminations, truncations, infos = env.step(a)
+        breakpoint()
+        torch.save(extracted_obs, "/mnt/mnt/public/mjwei/repo/RLinf-1111/RLinf/extracted_obs.pt")
         if i % 10 == 0:
             # 保存前十步的Video
             env.flush_video("test-mshab")
