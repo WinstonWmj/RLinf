@@ -25,7 +25,7 @@ export EXP_PATH=${EXP_PATH:-$ISAAC_PATH/apps}
 export CARB_APP_PATH=${CARB_APP_PATH:-$ISAAC_PATH/kit}
 
 # maniskill hab export path
-export MS_ASSET_DIR="/mnt/mnt/public/mjwei/download_models/arth-shukla/ReplicaCAD"
+export MS_ASSET_DIR="/mnt/mnt/public_zgc/datasets/arth-shukla/ReplicaCAD"
 
 if [ -z "$1" ]; then
     CONFIG_NAME="maniskillhab_ppo_openvlaoft"

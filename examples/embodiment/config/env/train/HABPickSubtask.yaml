@@ -19,7 +19,7 @@ stationary_base: False
 stationary_torso: False
 stationary_head: True
 
-frame_stack_num: 3
+frame_stack_num: 1
 stacking_keys: 
   - fetch_head_depth
   - fetch_hand_depth
@@ -40,7 +40,7 @@ init_params:
   scene_builder_cls: ""
   spawn_data_fp: ""
   max_episode_steps: ${env.train.max_episode_steps}
-  obs_mode: "rgbd"
+  obs_mode: "depth"  # can be replace by `rgb+depth`, `rgb+depth+segmentation` (or any combination of `rgb`, `depth`, `segmentation`). Besides, `rgbd` is a short hand for `rgb+depth`
   reward_mode: "normalized_dense"
   control_mode: "pd_joint_delta_pos"
   render_mode: "rgb_array"
@@ -48,6 +48,9 @@ init_params:
   robot_uids: "fetch"
   num_envs: ${multiply:${algorithm.group_size}, ${algorithm.num_group_envs}}
   sim_backend: "gpu"
+  obs_kwargs:
+    cat_pixels: False
+    cat_state: True
   env_kwargs:
     robot_force_mult: 0.001
     robot_force_penalty_min: 0.2

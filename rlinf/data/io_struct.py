@@ -1092,6 +1092,7 @@ class EnvOutput:
             )
         elif self.simulator_type == "maniskillhab":
             image_tensor = obs["images"]
+            wrist_image_tensor = obs["wrist_images"]
         else:
             raise NotImplementedError
 
@@ -1100,6 +1101,8 @@ class EnvOutput:
             states = obs["images_and_states"]["state"]
         if "state" in obs:
             states = obs["state"]
+        if "states" in obs:
+            states = obs["states"]
 
         task_descriptions = (
             list(obs["task_descriptions"]) if "task_descriptions" in obs else None

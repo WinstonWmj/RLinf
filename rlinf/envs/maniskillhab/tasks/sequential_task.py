@@ -120,8 +120,8 @@ class SequentialTaskEnv(SceneManipulationEnv):
         *args,
         robot_uids="fetch",
         task_plans: List[TaskPlan] = [],
-        require_build_configs_repeated_equally_across_envs=True,
-        randomize_build_configs_per_env=False,
+        require_build_configs_repeated_equally_across_envs=False,
+        randomize_build_configs_per_env=True,
         add_event_tracker_info=False,
         invisible_goals_in_human_render=False,
         task_cfgs=dict(),
@@ -657,7 +657,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
             self.build_config_idx_to_task_plans[
                 self.scene_builder.build_config_names_to_idxs[bc]
             ] = self.bc_to_task_plans[bc]
-            break  # mjwei TODO: here for debug we only need the first TaskPlan. In this way, the code can init fast and improve debug efficiency
+            # break  # mjwei TODO: here for debug we only need the first TaskPlan. In this way, the code can init fast and improve debug efficiency
 
         num_bcis = len(self.build_config_idx_to_task_plans.keys())
 

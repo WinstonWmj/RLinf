@@ -32,7 +32,7 @@ runner:
   val_check_interval: -1
   save_interval: -1
   seq_length: 4096
-  max_prompt_length: 30
+  max_prompt_length: 128
 
 algorithm:
   update_epoch: 8
@@ -44,7 +44,7 @@ algorithm:
   group_size: 1
   n_chunk_steps: 20
   n_eval_chunk_steps: 10
-  num_group_envs: 2
+  num_group_envs: 20
   rollout_epoch: 1
   reward_type: action_level
   logprob_type: token_level
@@ -121,8 +121,9 @@ actor:
     policy_setup: "fetch"
     value_type: ${algorithm.reward_type}  # 'action' or 'token'
     action_dim: 13
+    proprio_dim: 24  # qpos + qvel = 12 + 12 = 24
     num_action_chunks: 8
-    use_proprio: False
+    use_proprio: True
     unnorm_key: fetch_minmax
     center_crop: True
 
@@ -132,12 +133,13 @@ actor:
     vocab_size: 32000
     hidden_size: 4096
     add_value_head: True
-    image_size: [224, 224]
+    image_size: [1, 224, 224]  # for depth. [3, 224, 224] for rgb
     is_lora: True
     lora_rank: 32
     lora_path: /mnt/mnt/public/hongzhi/models/oft-sft/lora_004000/
     ckpt_path: null
-    use_wrist_image: False
+    use_wrist_image: True
+    num_images_in_input: 2
     attn_implementation: "flash_attention_2"
     low_cpu_mem_usage: True
     trust_remote_code: True

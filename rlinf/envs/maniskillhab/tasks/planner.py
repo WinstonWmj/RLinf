@@ -277,5 +277,4 @@ def plan_data_from_file(config_path: str = None) -> PlanData:
                 init_config_name=init_config_name,
             )
         )
-    # breakpoint()
     return PlanData(dataset=plan_data["dataset"], plans=plans)

@@ -167,27 +167,34 @@ class ManiskillHABEnv(gym.Env):
         return actions
 
     def _extract_obs_image(self, raw_obs):
-        agent_obs = raw_obs["agent"]
+        proprio_states = raw_obs["agent"]  # 'agent', 'extra', 'sensor_param', 'sensor_data'
+        # agent_obs: agent_obs["qpos"] agent_obs["qvel"]
         extra_obs = raw_obs["extra"]
-        fetch_head_rgb = raw_obs["sensor_data"]["fetch_head"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
-        fetch_hand_rgb = raw_obs["sensor_data"]["fetch_hand"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
-        fetch_head_depth = raw_obs["sensor_data"]["fetch_head"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
-        fetch_hand_depth = raw_obs["sensor_data"]["fetch_hand"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
+        fetch_head_depth, fetch_hand_depth, fetch_head_rgb, fetch_hand_rgb = None, None, None, None
+        if self.cfg.init_params.obs_mode == "depth" or self.cfg.init_params.obs_mode == "rbgd":
+            fetch_head_depth = raw_obs["sensor_data"]["fetch_head"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
+            fetch_hand_depth = raw_obs["sensor_data"]["fetch_hand"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
+        if self.cfg.init_params.obs_mode == "rgb" or self.cfg.init_params.obs_mode == "rbgd":
+            fetch_head_rgb = raw_obs["sensor_data"]["fetch_head"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
+            fetch_hand_rgb = raw_obs["sensor_data"]["fetch_hand"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
+
         extracted_obs = {
-            "fetch_head_depth": fetch_head_depth,
-            "fetch_hand_depth": fetch_hand_depth,
             "fetch_head_rgb": fetch_head_rgb,
             "fetch_hand_rgb": fetch_hand_rgb,
-            "state": torch.cat([_agent_state for _agent_state in raw_obs["agent"].values()], dim=1),  # cat qpos and qvel together
+            "fetch_head_depth": fetch_head_depth,
+            "fetch_hand_depth": fetch_hand_depth,
+            "states": torch.cat([_agent_state for _agent_state in proprio_states.values()], dim=1),  # cat qpos and qvel together, so the shape will be torch.Size([20, 24])
             "extra": extra_obs,
             "task_descriptions": self.instruction,
         }
         """
-        mjwei NOTE: the reason of stacking frame (repeat 3 times) is unknown yet!
+        mjwei NOTE: the reason for stacking frame 3 times is the `in_channels` of CNN is 3 and the input_sizes of Prismatic Model is also 3.
         """
-        for sk in self.cfg.stacking_keys:
-            extracted_obs[sk] = extracted_obs[sk].unsqueeze(1).repeat(1, self.cfg.frame_stack_num, 1, 1, 1)
-        extracted_obs["images"] = extracted_obs["fetch_head_rgb"]
+        for sk in ["fetch_head_depth", "fetch_hand_depth"]:
+            extracted_obs[sk] = extracted_obs[sk].repeat(1, 3, 1, 1)  # [B, C=1, H, W] —> # [B, C=3, H, W]
+
+        extracted_obs["images"] = extracted_obs["fetch_head_depth"]  # [B, C, H, W]
+        extracted_obs["wrist_images"] = extracted_obs["fetch_hand_depth"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
         return extracted_obs
 
     def _calc_step_reward(self, reward, info):

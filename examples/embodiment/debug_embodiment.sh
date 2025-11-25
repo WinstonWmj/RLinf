@@ -2,7 +2,8 @@
 
 export EMBODIED_PATH="$( cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export REPO_PATH=$(dirname $(dirname "$EMBODIED_PATH"))
-export SRC_FILE="${EMBODIED_PATH}/test_maniskillhab.py"
+export SRC_FILE="${EMBODIED_PATH}/test_openvlaoft.py"
+# export SRC_FILE="${EMBODIED_PATH}/test_maniskillhab.py"
 
 export MUJOCO_GL="egl"
 export PYOPENGL_PLATFORM="egl"
@@ -27,7 +28,7 @@ export CARB_APP_PATH=${CARB_APP_PATH:-$ISAAC_PATH/kit}
 # for debug
 export HYDRA_FULL_ERROR=1
 # maniskill hab export path
-export MS_ASSET_DIR="/mnt/mnt/public/mjwei/download_models/arth-shukla/ReplicaCAD"
+export MS_ASSET_DIR="/mnt/mnt/public_zgc/datasets/arth-shukla/ReplicaCAD"
 
 
 if [ -z "$1" ]; then
