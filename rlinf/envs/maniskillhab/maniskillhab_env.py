@@ -71,9 +71,10 @@ class ManiskillHABEnv(gym.Env):
         env_args = OmegaConf.to_container(cfg.init_params, resolve=True)
         print("cfg.task_plan_fp=", cfg.task_plan_fp)
         plan_data = plan_data_from_file(cfg.task_plan_fp)
-        env_args["task_plans"] = plan_data.plans
-        env_args["scene_builder_cls"] = plan_data.dataset
-        env_args["spawn_data_fp"] = cfg.spawn_data_fp
+        # breakpoint()
+        env_args["task_plans"] = plan_data.plans  # length = 20k, define the build_config_name and init_config_name
+        env_args["scene_builder_cls"] = plan_data.dataset  # string='ReplicaCADSetTableTrain'
+        env_args["spawn_data_fp"] = cfg.spawn_data_fp  # ../pick/train/spawn_data.pt
         self.env: BaseEnv = gym.make(
             id=env_args["id"],
             max_episode_steps=env_args["max_episode_steps"],
@@ -95,7 +96,7 @@ class ManiskillHABEnv(gym.Env):
         )  # [B, ]
         self.record_metrics = record_metrics
         self._is_start = True
-        self._init_reset_state_ids()
+        # self._init_reset_state_ids()
         self.info_logging_keys = ["is_src_obj_grasped", "consecutive_grasp", "success"]
         if self.record_metrics:
             self._init_metrics()
@@ -138,15 +139,16 @@ class ManiskillHABEnv(gym.Env):
         self.update_reset_state_ids()
 
     def update_reset_state_ids(self):
-        reset_state_ids = torch.randint(
-            low=0,
-            high=self.total_num_group_envs,
-            size=(self.num_group,),
-            generator=self._generator,
-        )
-        self.reset_state_ids = reset_state_ids.repeat_interleave(
-            repeats=self.group_size
-        ).to(self.device)
+        # reset_state_ids = torch.randint(
+        #     low=0,
+        #     high=self.total_num_group_envs,
+        #     size=(self.num_group,),
+        #     generator=self._generator,
+        # )
+        # self.reset_state_ids = reset_state_ids.repeat_interleave(
+        #     repeats=self.group_size
+        # ).to(self.device)
+        self.reset_state_ids = torch.tensor([0, 0])
 
     def _wrap_obs(self, raw_obs):
         if self.env.obs_mode == "state":
@@ -156,25 +158,23 @@ class ManiskillHABEnv(gym.Env):
         return wrapped_obs
     
     def _wrap_action(self, actions):
-        if self.cfg.stationary_base:
-            actions[..., -1] = 0
-            actions[..., -2] = 0
-        if self.cfg.stationary_torso:
-            actions[..., -3] = 0
-        if self.cfg.stationary_head:
-            actions[..., -4] = 0
-            actions[..., -5] = 0
+        # NOTE: this is suitable for 'Fetch' robot.
+        if self.cfg.controller_config.stationary_body:
+            actions = np.concatenate([actions, np.zeros((actions.shape[0], 3), dtype=actions.dtype)], axis=1)
+        if self.cfg.controller_config.stationary_base:
+            actions = np.concatenate([actions, np.zeros((actions.shape[0], 2), dtype=actions.dtype)], axis=1)
         return actions
 
     def _extract_obs_image(self, raw_obs):
-        proprio_states = raw_obs["agent"]  # 'agent', 'extra', 'sensor_param', 'sensor_data'
-        # agent_obs: agent_obs["qpos"] agent_obs["qvel"]
-        extra_obs = raw_obs["extra"]
+        proprio_states = torch.cat([_agent_state for _agent_state in raw_obs["agent"].values()], dim=1)  # 'qpos', 'qvel'
+        extra_obs = raw_obs["extra"]  # extra_obs = extract_obs["extra"]
+        extra_obs['is_grasped'] = extra_obs['is_grasped'].unsqueeze(1)
+        extra_obs_cat = torch.cat([_agent_state for _agent_state in extra_obs.values()], dim=1)  # 'tcp_pose_wrt_base', 'obj_pose_wrt_base', 'goal_pos_wrt_base', 'is_grasped']
         fetch_head_depth, fetch_hand_depth, fetch_head_rgb, fetch_hand_rgb = None, None, None, None
-        if self.cfg.init_params.obs_mode == "depth" or self.cfg.init_params.obs_mode == "rbgd":
+        if self.cfg.init_params.obs_mode == "depth" or self.cfg.init_params.obs_mode == "rgbd":
             fetch_head_depth = raw_obs["sensor_data"]["fetch_head"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
             fetch_hand_depth = raw_obs["sensor_data"]["fetch_hand"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
-        if self.cfg.init_params.obs_mode == "rgb" or self.cfg.init_params.obs_mode == "rbgd":
+        if self.cfg.init_params.obs_mode == "rgb" or self.cfg.init_params.obs_mode == "rgbd":
             fetch_head_rgb = raw_obs["sensor_data"]["fetch_head"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
             fetch_hand_rgb = raw_obs["sensor_data"]["fetch_hand"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
 
@@ -183,7 +183,8 @@ class ManiskillHABEnv(gym.Env):
             "fetch_hand_rgb": fetch_hand_rgb,
             "fetch_head_depth": fetch_head_depth,
             "fetch_hand_depth": fetch_hand_depth,
-            "states": torch.cat([_agent_state for _agent_state in proprio_states.values()], dim=1),  # cat qpos and qvel together, so the shape will be torch.Size([20, 24])
+            # "states": torch.cat([proprio_states, extra_obs_cat], dim=1),  # cat all states together, so the shape will be torch.Size([bsz, 42])
+            "states": extra_obs['tcp_pose_wrt_base'],  # cat qpos and qvel together, so the shape will be torch.Size([bsz, 7])
             "extra": extra_obs,
             "task_descriptions": self.instruction,
         }
@@ -193,8 +194,8 @@ class ManiskillHABEnv(gym.Env):
         for sk in ["fetch_head_depth", "fetch_hand_depth"]:
             extracted_obs[sk] = extracted_obs[sk].repeat(1, 3, 1, 1)  # [B, C=1, H, W] —> # [B, C=3, H, W]
 
-        extracted_obs["images"] = extracted_obs["fetch_head_depth"]  # [B, C, H, W]
-        extracted_obs["wrist_images"] = extracted_obs["fetch_hand_depth"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
+        extracted_obs["images"] = extracted_obs["fetch_head_rgb"]  # [B, C, H, W]
+        extracted_obs["wrist_images"] = extracted_obs["fetch_hand_rgb"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
         return extracted_obs
 
     def _calc_step_reward(self, reward, info):
@@ -303,10 +304,12 @@ class ManiskillHABEnv(gym.Env):
         if self.is_start:
             extracted_obs, infos = self.reset(
                 seed=self.seed,
-                options={"episode_id": self.reset_state_ids}
+                options={"task_plan_idxs": self.reset_state_ids}  # {"episode_id": self.reset_state_ids}
                 if self.use_fixed_reset_state_ids
                 else {},
             )
+            state_dict = self.env.get_state_dict()
+            print("mjwei LOGGGGGG, state_dict['task_plan_idxs']=", state_dict['task_plan_idxs'])
             self._is_start = False
             terminations = torch.zeros(
                 self.num_envs, dtype=torch.bool, device=self.device
@@ -397,7 +400,7 @@ class ManiskillHABEnv(gym.Env):
         options = {"env_idx": env_idx}
         final_info = torch_clone_dict(infos)
         if self.use_fixed_reset_state_ids:
-            options.update(episode_id=self.reset_state_ids[env_idx])
+            options.update(task_plan_idxs=self.reset_state_ids[env_idx])
         extracted_obs, infos = self.reset(options=options)
         # gymnasium calls it final observation but it really is just o_{t+1} or the true next observation
         infos["final_observation"] = final_obs

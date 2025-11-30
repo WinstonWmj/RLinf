@@ -15,6 +15,7 @@ def main(cfg) -> None:
     for i in range(1):
         env.update_reset_state_ids()
         print(env.reset_state_ids)
+    env2 = ManiskillHABEnv(cfg.env.train, seed_offset=0, total_num_processes=1)
     
     
     # 开始
@@ -27,7 +28,7 @@ def main(cfg) -> None:
     for i in tqdm(range(1, 30)):
         # a = np.zeros((10, 13))
         extracted_obs, step_reward, terminations, truncations, infos = env.step(a)
-        breakpoint()
+        # breakpoint()
         torch.save(extracted_obs, "/mnt/mnt/public/mjwei/repo/RLinf-1111/RLinf/extracted_obs.pt")
         if i % 10 == 0:
             # 保存前十步的Video

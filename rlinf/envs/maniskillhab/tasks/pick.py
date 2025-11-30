@@ -253,7 +253,7 @@ class PickSubtaskTrainEnv(SubtaskTrainEnv):
         # print(obj_name)  # ['apple', 'bowl', 'apple', 'apple', 'bowl', 'bowl']
         instruct = []
         for idx in range(self.num_envs):
-            instruct.append(f"pick {obj_name[idx]}")  # In: What action should the robot take to {pick apple}?\nOut: 
+            instruct.append(f"pick up the {obj_name[idx]}")  # In: What action should the robot take to {pick apple}?\nOut: 
         return instruct
 
     def evaluate(self):

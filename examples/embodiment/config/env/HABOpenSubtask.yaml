@@ -26,10 +26,10 @@ stacking_keys:
 
 log_extra_stat_keys: True
 
-TASK: prepare_groceries  # options: 'prepare_groceries', 'set_table', 'tidy_house'
-SUBTASK: pick
+TASK: set_table  # options: 'prepare_groceries', 'set_table', 'tidy_house'
+SUBTASK: open
 SPLIT: train
-OBJ: 024_bowl
+OBJ: fridge
 task_plan_fp: "${oc.env:MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/${env.train.TASK}/${env.train.SUBTASK}/${env.train.SPLIT}/${env.train.OBJ}.json"
 spawn_data_fp: "${oc.env:MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/${env.train.TASK}/${env.train.SUBTASK}/${env.train.SPLIT}/spawn_data.pt"
 
