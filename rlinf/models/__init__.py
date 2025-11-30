@@ -169,6 +169,34 @@ def get_model(model_path, cfg: DictConfig, override_config_kwargs=None):
             use_proprio=cfg.use_proprio,
         )
 
+        # === load proprio_projector ===
+        import glob
+        proprio_ckpt_files = glob.glob(os.path.join(model_path, "proprio_projector--*.pt"))
+        proprio_ckpt_path = proprio_ckpt_files[0] if proprio_ckpt_files else ''
+        if cfg.use_proprio and os.path.isfile(proprio_ckpt_path):
+            print("mjwei LOGGGGGG, proprio_ckpt_path=", proprio_ckpt_path)
+            proprio_state = torch.load(proprio_ckpt_path, map_location="cpu")
+
+            # 1) 如果是 DataParallel/DDP 保存出来的，会有 "module." 前缀
+            if any(k.startswith("module.") for k in proprio_state.keys()):
+                proprio_state = {
+                    k[len("module."):] if k.startswith("module.") else k: v
+                    for k, v in proprio_state.items()
+                }
+                
+            # If you are sure that keys are exactly matching, you can set strict=True. To be safe, use strict=False and print the missing/unexpected keys.
+            missing, unexpected = model.proprio_projector.load_state_dict(
+                proprio_state, strict=False
+            )
+            print(f"[RLinf] Loaded proprio projector from {proprio_ckpt_path}")
+            print(f"  missing keys: {missing}")
+            print(f"  unexpected keys: {unexpected}")
+        else:
+            print(f"[RLinf] No proprio projector checkpoint found at {proprio_ckpt_path}")
+
+        model.vision_backbone.set_num_images_in_input(cfg.get("num_images_in_input", 1))
+        model.to(torch_dtype)
+
         # oft add
         model.vision_backbone.set_num_images_in_input(cfg.get("num_images_in_input", 1))
 
@@ -254,6 +282,21 @@ def get_model(model_path, cfg: DictConfig, override_config_kwargs=None):
             num_action_chunks=cfg.num_action_chunks,
             add_value_head=cfg.add_value_head,
         )
+    elif cfg.model_name == "cnn_policy":
+        from .embodiment.cnn_ppo_policy import CNNPolicy
+        
+        model = CNNPolicy(
+            cfg.obs_dim,
+            cfg.action_dim,
+            cfg.hidden_dim,
+            num_action_chunks=cfg.num_action_chunks,
+            add_value_head=cfg.add_value_head,
+        )
+        # === load model ===
+        checkpoint = torch.load(str(model_path))
+        model.load_state_dict(checkpoint["agent"])
+        
+
     elif cfg.model_name == "gr00t":
         from pathlib import Path
 
