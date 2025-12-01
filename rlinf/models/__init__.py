@@ -288,13 +288,22 @@ def get_model(model_path, cfg: DictConfig, override_config_kwargs=None):
         model = CNNPolicy(
             cfg.obs_dim,
             cfg.action_dim,
-            cfg.hidden_dim,
             num_action_chunks=cfg.num_action_chunks,
             add_value_head=cfg.add_value_head,
         )
         # === load model ===
         checkpoint = torch.load(str(model_path))
-        model.load_state_dict(checkpoint["agent"])
+        # mjwei NOTE: change the prefix of the keys in the checkpoint to match the model's keys
+        model_checkpoint = checkpoint["agent"]
+        model_checkpoint = {
+            "value_head."+k[len("critic."):] if k.startswith("critic.") else k: v
+            for k, v in model_checkpoint.items()
+        }
+        model_checkpoint = {
+            "action_head."+k[len("actor_mean."):] if k.startswith("actor_mean.") else k: v
+            for k, v in model_checkpoint.items()
+        }
+        model.load_state_dict(model_checkpoint)
         
 
     elif cfg.model_name == "gr00t":
