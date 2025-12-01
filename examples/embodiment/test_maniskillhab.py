@@ -15,7 +15,7 @@ def main(cfg) -> None:
     for i in range(1):
         env.update_reset_state_ids()
         print(env.reset_state_ids)
-    env2 = ManiskillHABEnv(cfg.env.train, seed_offset=0, total_num_processes=1)
+    # env2 = ManiskillHABEnv(cfg.env.train, seed_offset=0, total_num_processes=1)
     
     
     # 开始

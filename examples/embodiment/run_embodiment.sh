@@ -25,7 +25,7 @@ export CARB_APP_PATH=${CARB_APP_PATH:-$ISAAC_PATH/kit}
 export MS_ASSET_DIR="/root/.maniskill/ReplicaCAD"
 
 if [ -z "$1" ]; then
-    CONFIG_NAME="maniskillhab_ppo_openvlaoft"
+    CONFIG_NAME="maniskillhab_ppo_cnn"
 else
     CONFIG_NAME=$1
 fi

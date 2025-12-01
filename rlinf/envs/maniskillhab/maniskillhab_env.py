@@ -183,30 +183,34 @@ class ManiskillHABEnv(gym.Env):
             "fetch_hand_rgb": fetch_hand_rgb,
             "fetch_head_depth": fetch_head_depth,
             "fetch_hand_depth": fetch_hand_depth,
-            # "states": torch.cat([proprio_states, extra_obs_cat], dim=1),  # cat all states together, so the shape will be torch.Size([bsz, 42])
-            "states": extra_obs['tcp_pose_wrt_base'],  # cat qpos and qvel together, so the shape will be torch.Size([bsz, 7])
+            "states": torch.cat([proprio_states, extra_obs_cat], dim=1),  # cat all states together, so the shape will be torch.Size([bsz, 42])
+            # "states": extra_obs['tcp_pose_wrt_base'],  # cat qpos and qvel together, so the shape will be torch.Size([bsz, 7])
             "extra": extra_obs,
-            "task_descriptions": self.instruction,
         }
+        if self.cfg.use_instruction:
+            extracted_obs["task_descriptions"] = self.instruction
         """
         mjwei NOTE: the reason for stacking frame 3 times is the `in_channels` of CNN is 3 and the input_sizes of Prismatic Model is also 3.
         """
         for sk in ["fetch_head_depth", "fetch_hand_depth"]:
             extracted_obs[sk] = extracted_obs[sk].repeat(1, 3, 1, 1)  # [B, C=1, H, W] —> # [B, C=3, H, W]
-
-        extracted_obs["images"] = extracted_obs["fetch_head_rgb"]  # [B, C, H, W]
-        extracted_obs["wrist_images"] = extracted_obs["fetch_hand_rgb"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
+        if self.cfg.init_params.use_depth_only:
+            extracted_obs["images"] = extracted_obs["fetch_head_depth"]  # [B, C, H, W]
+            extracted_obs["wrist_images"] = extracted_obs["fetch_hand_depth"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
+        else:
+            extracted_obs["images"] = extracted_obs["fetch_head_rgb"]  # [B, C, H, W]
+            extracted_obs["wrist_images"] = extracted_obs["fetch_hand_rgb"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
         return extracted_obs
 
     def _calc_step_reward(self, reward, info):
         if getattr(self.cfg, "reward_mode", "default") == "raw":
             return reward
-        reward = torch.zeros(self.num_envs, dtype=torch.float32).to(
-            self.env.device
-        )  # [B, ]
-        reward += info["is_src_obj_grasped"] * 0.1
-        reward += info["consecutive_grasp"] * 0.1
-        reward += (info["success"] & info["is_src_obj_grasped"]) * 1.0
+        # reward = torch.zeros(self.num_envs, dtype=torch.float32).to(
+        #     self.env.device
+        # )  # [B, ]
+        # reward += info["is_src_obj_grasped"] * 0.1
+        # reward += info["consecutive_grasp"] * 0.1
+        # reward += (info["success"] & info["is_src_obj_grasped"]) * 1.0
         # diff
         reward_diff = reward - self.prev_step_reward
         self.prev_step_reward = reward

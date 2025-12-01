@@ -73,7 +73,7 @@ class NatureCNN(nn.Module):
 
 class CNNPolicy(nn.Module):
     def __init__(
-        self, obs_dim, action_dim, hidden_dim, num_action_chunks, add_value_head
+        self, obs_dim, action_dim, num_action_chunks, add_value_head
     ):
         super().__init__()
         
@@ -121,10 +121,13 @@ class CNNPolicy(nn.Module):
     def predict_action_batch(
         self, env_obs, calulate_logprobs=True, calulate_values=True, **kwargs
     ):
-        obs = dict()
-        obs["fetch_head_depth"] = env_obs["fetch_head_depth"]
-        obs["fetch_hand_depth"] = env_obs["fetch_hand_depth"]
-        obs["state"] = env_obs["states"]
+        obs = {
+            "pixels": {
+                "fetch_head_depth": env_obs["images"].to("cuda"),
+                "fetch_hand_depth": env_obs["wrist_images"].squeeze(1).to("cuda"),
+            },
+            "state": env_obs["states"].to("cuda"),
+        }
         feat = self.feature_net(obs)
         
         action_mean = self.action_head(feat)
@@ -144,7 +147,11 @@ class CNNPolicy(nn.Module):
         else:
             chunk_values = torch.zeros_like(chunk_logprobs[..., :1])
 
-        forward_inputs = {"obs": obs, "action": action}
+        forward_inputs = {
+            "pixels_head_depth": obs["pixels"]["fetch_head_depth"],
+            "pixels_hand_depth": obs["pixels"]["fetch_hand_depth"],
+            "state": obs["state"],
+        }
         result = {
             "prev_logprobs": chunk_logprobs,
             "prev_values": chunk_values,
@@ -161,11 +168,13 @@ class CNNPolicy(nn.Module):
         **kwargs,
     ):
         action = data["action"]
-        env_obs = data["obs"]
-        obs = dict()
-        obs["fetch_head_depth"] = env_obs["fetch_head_depth"]
-        obs["fetch_hand_depth"] = env_obs["fetch_hand_depth"]
-        obs["state"] = env_obs["states"]
+        obs = {
+            "pixels": {
+                "fetch_head_depth": data["pixels_head_depth"].to("cuda"),
+                "fetch_hand_depth": data["pixels_hand_depth"].squeeze(1).to("cuda"),
+            },
+            "state": data["states"].to("cuda"),
+        }
 
         feat = self.feature_net(obs)
         action_mean = self.action_head(feat)

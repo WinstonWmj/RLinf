@@ -42,7 +42,7 @@ algorithm:
   normalize_advantages: True
   kl_penalty: kl  # how to estimate kl divergence: kl or kl_penalty
   group_size: 1
-  n_chunk_steps: 25  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
+  n_chunk_steps: 20  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
   n_eval_chunk_steps: 10
   num_group_envs: 10
   rollout_epoch: 1
@@ -97,7 +97,7 @@ rollout:
     queue_size: 0
   mode: "colocate"
   backend: "huggingface"
-  model_dir: "/mnt/mnt/public_zgc/chenjiawei/logs_and_checkpoint/7_dim_no_action_head--2000_chkpt"
+  model_dir: "/mnt/mnt/public_zgc/datasets/arth-shukla/mshab_checkpoints/rl/set_table/open/fridge/policy.pt"
   precision: ${actor.model.precision}
   enable_offload: True
   pipeline_stage_num: 1
@@ -109,7 +109,7 @@ actor:
     queue_name: "replay_buffer"
     queue_size: 0
   training_backend: "fsdp"
-  checkpoint_load_path: "/mnt/mnt/public_zgc/chenjiawei/logs_and_checkpoint/7_dim_no_action_head--2000_chkpt"
+  checkpoint_load_path: "/mnt/mnt/public_zgc/datasets/arth-shukla/mshab_checkpoints/rl/set_table/open/fridge/policy.pt"
   checkpoint_save_path: "../results"
   micro_batch_size: 10
   global_batch_size: 100
@@ -120,8 +120,9 @@ actor:
     model_name: "cnn_policy"
     policy_setup: "fetch"
     value_type: ${algorithm.reward_type}  # 'action' or 'token'
-    action_dim: 8  # can be set 12 or 13, according to the control_mode
-    proprio_dim: 7  # qpos + qvel + ... = 12 + 12 + ... = 24
+    obs_dim: 3  # size of input's channel
+    action_dim: 13  # can be set 12 or 13, according to the control_mode
+    proprio_dim: 42  # qpos + qvel + ... = 12 + 12 + ... = 24
     num_action_chunks: 1
     use_proprio: True
     unnorm_key: mshab_prepare_groceries  # 'fetch_minmax' for debug
@@ -134,7 +135,7 @@ actor:
     hidden_size: 4096
     add_value_head: True
     image_size: [224, 224]
-    is_lora: True
+    is_lora: False
     lora_rank: 32
     # lora_path: /mnt/mnt/public/hongzhi/models/oft-sft/lora_004000/
     ckpt_path: null
@@ -156,7 +157,7 @@ actor:
 
   tokenizer:
     tokenizer_type: "HuggingFaceTokenizer"
-    tokenizer_model: "/mnt/mnt/public_zgc/chenjiawei/logs_and_checkpoint/7_dim_no_action_head--2000_chkpt"
+    tokenizer_model: None
     use_fast: False
     trust_remote_code: True
     padding_side: "right"
