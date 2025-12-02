@@ -15,11 +15,7 @@ video_cfg:
   info_on_video: True
   video_base_dir: ${runner.logger.log_path}/video/train
 
-stationary_base: False
-stationary_torso: False
-stationary_head: True
-
-frame_stack_num: 1
+frame_stack_num: 3
 stacking_keys: 
   - fetch_head_depth
   - fetch_hand_depth
@@ -33,11 +29,12 @@ OBJ: fridge
 task_plan_fp: "${oc.env:MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/${env.train.TASK}/${env.train.SUBTASK}/${env.train.SPLIT}/${env.train.OBJ}.json"
 spawn_data_fp: "${oc.env:MS_ASSET_DIR}/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/${env.train.TASK}/${env.train.SUBTASK}/${env.train.SPLIT}/spawn_data.pt"
 
-use_instruction: False
+use_instruction: True  # True will open the fridge
 
 controller_config:
   stationary_base: False  # 2-dim
   stationary_body: False  # 3-dim
+  stationary_head: True  # 2-dim
 
 init_params:
   id: "OpenSubtaskTrain-v0"

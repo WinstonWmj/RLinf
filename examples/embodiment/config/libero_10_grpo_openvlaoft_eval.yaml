@@ -137,7 +137,7 @@ actor:
 
   tokenizer:
     tokenizer_type: "HuggingFaceTokenizer"
-    tokenizer_model: "/path/to/model/Openvla-oft-SFT-libero10-traj1/"
+    tokenizer_model: "/mnt/mnt/public_zgc/models/Haozhan72/Openvla-oft-SFT-libero10-traj1/"
     use_fast: False
     trust_remote_code: True
     padding_side: "right"

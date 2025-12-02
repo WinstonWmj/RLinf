@@ -42,9 +42,9 @@ algorithm:
   normalize_advantages: True
   kl_penalty: kl  # how to estimate kl divergence: kl or kl_penalty
   group_size: 1
-  n_chunk_steps: 20  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
+  n_chunk_steps: 200  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
   n_eval_chunk_steps: 10
-  num_group_envs: 10
+  num_group_envs: 256
   rollout_epoch: 1
   reward_type: action_level
   logprob_type: token_level
@@ -111,8 +111,8 @@ actor:
   training_backend: "fsdp"
   checkpoint_load_path: "/mnt/mnt/public_zgc/datasets/arth-shukla/mshab_checkpoints/rl/set_table/open/fridge/policy.pt"
   checkpoint_save_path: "../results"
-  micro_batch_size: 10
-  global_batch_size: 100
+  micro_batch_size: 256
+  global_batch_size: 12800
   seed: 1234
   enable_offload: True
 

@@ -2,8 +2,7 @@
 
 export EMBODIED_PATH="$( cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export REPO_PATH=$(dirname $(dirname "$EMBODIED_PATH"))
-# export SRC_FILE="${EMBODIED_PATH}/test_cnn.py"
-export SRC_FILE="${EMBODIED_PATH}/test_maniskillhab.py"
+export SRC_FILE="${EMBODIED_PATH}/train_embodied_agent.py"
 
 export MUJOCO_GL="egl"
 export PYOPENGL_PLATFORM="egl"
@@ -25,15 +24,11 @@ export ISAAC_PATH=${ISAAC_PATH:-/path/to/isaac-sim}
 export EXP_PATH=${EXP_PATH:-$ISAAC_PATH/apps}
 export CARB_APP_PATH=${CARB_APP_PATH:-$ISAAC_PATH/kit}
 
-# for debug
-export HYDRA_FULL_ERROR=1
-export CUDA_VISIBLE_DEVICES=0
 # maniskill hab export path
-export MS_ASSET_DIR="/root/.maniskill/ReplicaCAD"
-
+export MS_ASSET_DIR="/mnt/public/mjwei/download_models/arth-shukla/ReplicaCAD"
 
 if [ -z "$1" ]; then
-    CONFIG_NAME="maniskillhab_ppo_cnn"
+    CONFIG_NAME="maniskillhab_ppo_openvlaoft_J02"
 else
     CONFIG_NAME=$1
 fi
