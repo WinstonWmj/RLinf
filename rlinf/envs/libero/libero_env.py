@@ -312,7 +312,7 @@ class LiberoEnv(gym.Env):
         if reset_state_ids is None:
             num_reset_states = len(env_idx)
             reset_state_ids = self._get_random_reset_state_ids(num_reset_states)
-
+        print("MJOOOOOOO:", reset_state_ids)
         self._reconfigure(reset_state_ids, env_idx)
         for _ in range(15):
             zero_actions = np.zeros((len(env_idx), 7))
@@ -414,6 +414,7 @@ class LiberoEnv(gym.Env):
         past_dones = torch.logical_or(past_terminations, past_truncations)
 
         if past_dones.any() and self.auto_reset:
+            print("MJOOOOOOO:Now is chunk done!")
             extracted_obs, infos = self._handle_auto_reset(
                 past_dones.cpu().numpy(), extracted_obs, infos
             )
@@ -439,6 +440,7 @@ class LiberoEnv(gym.Env):
         final_obs = copy.deepcopy(_final_obs)
         env_idx = np.arange(0, self.num_envs)[dones]
         final_info = copy.deepcopy(infos)
+        print("MJOOOOOOO:Now is auto reset")
         obs, infos = self.reset(
             env_idx=env_idx,
             reset_state_ids=self.reset_state_ids[env_idx]

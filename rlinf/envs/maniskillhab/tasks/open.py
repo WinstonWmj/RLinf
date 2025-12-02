@@ -197,3 +197,31 @@ class OpenSubtaskTrainEnv(SubtaskTrainEnv):
     ):
         max_reward = 27
         return self.compute_dense_reward(obs=obs, action=action, info=info) / max_reward
+
+
+    # -------------------------------------------------------------------------------------------------
+    # INPUT: LANGUAGE INSTRUCTION
+    # -------------------------------------------------------------------------------------------------
+
+    def get_language_instruction(self):
+        '''
+        obj_id is of format {ycb_num}_{name}-{instance_num}. the obj ids will be None for Close subtasks, since these don't involve objects.
+        '''
+
+        instruct = []
+        task_plan = self.unwrapped.task_plan
+        assert len(task_plan) == 1 and isinstance(task_plan[0], OpenSubtask)
+        for idx in range(self.num_envs):
+            articulation_id = [
+                getattr(self.unwrapped.base_task_plans[(cid,)].subtasks[0], "articulation_id", None)  # mjwei NOTE: the length of each subtasks should be 1, which is asserted in the initail of XXXSubTrainEnv, len(tp0.subtasks) == 1
+                for cid in task_plan[0].composite_subtask_uids
+            ]
+        # print(self.unwrapped.base_task_plans[(cid,)].subtasks[0].__dict__)  # outputs a list of articulation_id, eg ['007_tuna_fish_can-1', '003_cracker_box-0', '004_sugar_box-0', '005_tomato_soup_can-0']{'articulation_type': 'fridge', 'articulation_id': 'fridge-0', 'articulation_handle_link_idx': 2, 'articulation_handle_active_joint_idx': 0, 'obj_id': '013_apple-0', 'articulation_relative_handle_pos': [0.09, -0.66, 0.2], 'type': 'open', 'uid': 'set_table-open-train-2973-0', 'composite_subtask_uids': ['set_table-open-train-2973-0']}
+        articulation_name = [
+            id.rsplit('-', 1)[0] for id in articulation_id
+        ]
+        # print(articulation_name)  # ['apple', 'bowl', 'apple', 'apple', 'bowl', 'bowl']
+        instruct = []
+        for idx in range(self.num_envs):
+            instruct.append(f"pick up the {articulation_name[idx]}")  # In: What action should the robot take to {pick apple}?\nOut: 
+        return instruct

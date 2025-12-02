@@ -155,14 +155,14 @@ def get_model(model_path, cfg: DictConfig, override_config_kwargs=None):
         if override_config_kwargs is not None:
             for key, val in override_config_kwargs.items():
                 setattr(actor_model_config, key, val)
-
+        proprio_dim = cfg.get("proprio_dim", None)
         model = OpenVLAOFTForRLActionPrediction.from_pretrained(
             pretrained_model_name_or_path=model_path,
             torch_dtype=torch_dtype,
             # attn_implementation="flash_attention_2",
             config=actor_model_config,
             action_dim=cfg.action_dim,
-            proprio_dim=cfg.proprio_dim,
+            proprio_dim=proprio_dim,
             num_action_chunks=cfg.num_action_chunks,
             trust_remote_code=True,
             add_value_head=cfg.add_value_head,

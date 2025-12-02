@@ -159,10 +159,14 @@ class ManiskillHABEnv(gym.Env):
     
     def _wrap_action(self, actions):
         # NOTE: this is suitable for 'Fetch' robot.
-        if self.cfg.controller_config.stationary_body:
-            actions = np.concatenate([actions, np.zeros((actions.shape[0], 3), dtype=actions.dtype)], axis=1)
         if self.cfg.controller_config.stationary_base:
-            actions = np.concatenate([actions, np.zeros((actions.shape[0], 2), dtype=actions.dtype)], axis=1)
+            actions[..., -1] = 0
+            actions[..., -2] = 0
+        if self.cfg.controller_config.stationary_torso:
+            actions[..., -3] = 0
+        if self.cfg.controller_config.stationary_head:
+            actions[..., -4] = 0
+            actions[..., -5] = 0
         return actions
 
     def _extract_obs_image(self, raw_obs):
