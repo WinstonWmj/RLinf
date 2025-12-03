@@ -886,6 +886,7 @@ class EmbodiedFSDPActor(FSDPModelManager, Worker):
                 self.rollout_batch,
                 rollout_size // batch_size_per_rank,
                 shuffle=True,
+                shuffle_seed=self.cfg.actor.seed + self._rank,
             )
             for train_global_batch in rollout_dataloader_iter:
                 # split batch into micro_batches
@@ -902,6 +903,7 @@ class EmbodiedFSDPActor(FSDPModelManager, Worker):
                     train_global_batch,
                     train_global_batch_size // self.cfg.actor.micro_batch_size,
                     shuffle=True,
+                    shuffle_seed=self.cfg.actor.seed + self._rank,
                 )
 
                 self.optimizer.zero_grad()

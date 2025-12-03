@@ -113,7 +113,7 @@ actor:
   checkpoint_save_path: "../results"
   micro_batch_size: 800  # 12800/16
   global_batch_size: 12800
-  seed: 0  # set 0 for reproducability
+  seed: 1234
   enable_offload: True
 
   model:
@@ -144,7 +144,7 @@ actor:
     attn_implementation: "flash_attention_2"
     low_cpu_mem_usage: True
     trust_remote_code: True
-    gradient_checkpointing: True
+    gradient_checkpointing: False
 
   optim:
     lr: 3.0e-4
@@ -154,13 +154,6 @@ actor:
     adam_eps: 1.0e-05
     clip_grad: 0.5
     critic_warmup_steps: 0
-
-  tokenizer:
-    tokenizer_type: "HuggingFaceTokenizer"
-    tokenizer_model: None
-    use_fast: False
-    trust_remote_code: True
-    padding_side: "right"
 
   fsdp_config:                  # below are fsdp configs, for more details, see https://pytorch.org/docs/stable/fsdp.html and https://huggingface.co/docs/accelerate/package_reference/fsdp
 

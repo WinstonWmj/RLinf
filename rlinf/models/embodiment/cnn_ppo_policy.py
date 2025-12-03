@@ -61,9 +61,9 @@ class NatureCNN(nn.Module):
                 encoded_tensor_list.append(extractor(state))
             else:
                 with torch.no_grad():
-                    pobs = pixels[key].float()
-                    # pobs = 1 / (1 + pixels[key].float() / 400)
-                    pobs = 1 - torch.tanh(pixels[key].float() / 1000)
+                    pobs = pixels[key]
+                    # pobs = 1 / (1 + pixels[key] / 400)
+                    pobs = 1 - torch.tanh(pixels[key] / 1000)
                     if len(pobs.shape) == 5:
                         b, fs, d, h, w = pobs.shape
                         pobs = pobs.reshape(b, fs * d, h, w)
@@ -101,32 +101,17 @@ class CNNPolicy(nn.Module):
             torch.ones(1, self.action_dim) * -0.5
         )
 
-    # def obs_encoder(self, x):
-    #     return self.feature_net(x)
-
-    # def get_value(self, x):
-    #     x = self.feature_net(x)
-    #     return self.critic(x)
-
-    # def get_action(self, x, deterministic=False):
-    #     x = self.feature_net(x)
-    #     action_mean = self.action_head(x)
-    #     if deterministic:
-    #         return action_mean
-    #     action_logstd = self.actor_logstd.expand_as(action_mean)
-    #     action_std = torch.exp(action_logstd)
-    #     probs = Normal(action_mean, action_std)
-    #     return probs.sample()
-
     def predict_action_batch(
         self, env_obs, calulate_logprobs=True, calulate_values=True, **kwargs
     ):
+        device = next(self.parameters()).device
+        precision = next(self.parameters()).dtype
         obs = {
             "pixels": {
-                "fetch_head_depth": env_obs["images"].to("cuda"),
-                "fetch_hand_depth": env_obs["wrist_images"].squeeze(1).to("cuda"),
+                "fetch_head_depth": env_obs["images"].to(device=device, dtype=precision),
+                "fetch_hand_depth": env_obs["wrist_images"].squeeze(1).to(device=device, dtype=precision),
             },
-            "state": env_obs["states"].to("cuda"),
+            "state": env_obs["states"].to(device=device, dtype=precision),
         }
         feat = self.feature_net(obs)
         
@@ -148,9 +133,10 @@ class CNNPolicy(nn.Module):
             chunk_values = torch.zeros_like(chunk_logprobs[..., :1])
 
         forward_inputs = {
-            "pixels_head_depth": obs["pixels"]["fetch_head_depth"],
-            "pixels_hand_depth": obs["pixels"]["fetch_hand_depth"],
-            "state": obs["state"],
+            "images": env_obs["images"],
+            "wrist_images": env_obs["wrist_images"],
+            "state": env_obs["states"],
+            "action": action
         }
         result = {
             "prev_logprobs": chunk_logprobs,
@@ -167,13 +153,15 @@ class CNNPolicy(nn.Module):
         compute_values=True,
         **kwargs,
     ):
+        device = next(self.parameters()).device
+        precision = next(self.parameters()).dtype
         action = data["action"]
         obs = {
             "pixels": {
-                "fetch_head_depth": data["pixels_head_depth"].to("cuda"),
-                "fetch_hand_depth": data["pixels_hand_depth"].squeeze(1).to("cuda"),
+                "fetch_head_depth": data["images"].to(device=device, dtype=precision),
+                "fetch_hand_depth": data["wrist_images"].squeeze(1).to(device=device, dtype=precision),
             },
-            "state": data["states"].to("cuda"),
+            "state": data["state"].to(device=device, dtype=precision),
         }
 
         feat = self.feature_net(obs)
@@ -182,11 +170,15 @@ class CNNPolicy(nn.Module):
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
 
+        ret_dict = {}
         if compute_logprobs:
             logprobs = probs.log_prob(action)
+            ret_dict["logprobs"] = logprobs.to(dtype=torch.float32)
         if compute_entropy:
             entropy = probs.entropy()
+            ret_dict["entropy"] = entropy.to(dtype=torch.float32)
         if compute_values:
-            values = self.value_head(obs)
-        return {"logprobs": logprobs, "values": values, "entropy": entropy}
+            values = self.value_head(feat)
+            ret_dict["values"] = values.to(dtype=torch.float32)
+        return ret_dict
         
