@@ -779,6 +779,7 @@ class EmbodiedFSDPActor(FSDPModelManager, Worker):
             rollout_dataloader_iter = get_iterator_k_split(
                 self.rollout_batch,
                 rollout_size // batch_size_per_rank,
+                shuffle=True,
             )
             for train_global_batch in rollout_dataloader_iter:
                 # split batch into micro_batches
@@ -794,6 +795,7 @@ class EmbodiedFSDPActor(FSDPModelManager, Worker):
                 train_micro_batch = get_iterator_k_split(
                     train_global_batch,
                     train_global_batch_size // self.cfg.actor.micro_batch_size,
+                    shuffle=True,
                 )
 
                 self.optimizer.zero_grad()

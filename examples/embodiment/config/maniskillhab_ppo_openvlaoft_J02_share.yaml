@@ -13,9 +13,9 @@ hydra:
 cluster:
   num_nodes: 1
   component_placement:
-    actor: 0-3
-    env: 0-1
-    rollout: 2-3
+    actor: all
+    env: all
+    rollout: all
 
 runner:
   task_type: embodied
@@ -35,20 +35,20 @@ runner:
   max_prompt_length: 30
 
 algorithm:
-  update_epoch: 1
+  update_epoch: 8
   auto_reset: True
   ignore_terminations: True
   use_fixed_reset_state_ids: False  # =True: reset之后仍是相同的 episode id; =False: 相同的scene_id但是不同的episode
   normalize_advantages: True
   kl_penalty: kl  # how to estimate kl divergence: kl or kl_penalty
   group_size: 1
-  n_chunk_steps: 200  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
+  n_chunk_steps: 100  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
   n_eval_chunk_steps: 10
-  num_group_envs: 256
+  num_group_envs: 512
   rollout_epoch: 1
   reward_type: action_level
-  logprob_type: token_level
-  entropy_type: token_level
+  logprob_type: action_level
+  entropy_type: action_level
 
   adv_type: gae
   loss_type: actor_critic
@@ -59,11 +59,11 @@ algorithm:
   clip_ratio_low: 0.2
   clip_ratio_c: 3.0
   value_clip: 0.2
-  huber_delta: 10.0
+  huber_delta: 1e6
 
 
-  gamma: 0.99
-  gae_lambda: 0.95
+  gamma: 0.95
+  gae_lambda: 0.90
 
   # params for rollout
   sampling_params:
@@ -97,7 +97,7 @@ rollout:
     queue_size: 0
   mode: "colocate"
   backend: "huggingface"
-  model_dir: "/mnt/public_zgc/chenjiawei/logs_and_checkpoint/7_dim_no_action_head--2000_chkpt"
+  model_dir: "/mnt/public/chenjiawei/logs_and_checkpoint/openvla-7b-oft-finetuned-libero-spatial+mshab_prepare_groceries+b48+lr-0.0005+lora-r32+dropout-0.0--image_aug--no_action_head_only_fridge_state42_action13_no_proprio_only_success--10000_chkpt"
   precision: ${actor.model.precision}
   enable_offload: True
   pipeline_stage_num: 1
@@ -109,10 +109,10 @@ actor:
     queue_name: "replay_buffer"
     queue_size: 0
   training_backend: "fsdp"
-  checkpoint_load_path: "/mnt/public_zgc/chenjiawei/logs_and_checkpoint/7_dim_no_action_head--2000_chkpt"
+  checkpoint_load_path: "/mnt/public/chenjiawei/logs_and_checkpoint/openvla-7b-oft-finetuned-libero-spatial+mshab_prepare_groceries+b48+lr-0.0005+lora-r32+dropout-0.0--image_aug--no_action_head_only_fridge_state42_action13_no_proprio_only_success--10000_chkpt"
   checkpoint_save_path: "../results"
-  micro_batch_size: 256
-  global_batch_size: 12800
+  micro_batch_size: 800  # 12800/16
+  global_batch_size: 51200  # 12800/16
   seed: 1234
   enable_offload: True
 
@@ -151,12 +151,12 @@ actor:
     adam_beta1: 0.9
     adam_beta2: 0.999
     adam_eps: 1.0e-05
-    clip_grad: 10.0
+    clip_grad: 10
     critic_warmup_steps: 0
 
   tokenizer:
     tokenizer_type: "HuggingFaceTokenizer"
-    tokenizer_model: "/mnt/public_zgc/chenjiawei/logs_and_checkpoint/7_dim_no_action_head--2000_chkpt"
+    tokenizer_model: "/mnt/public/chenjiawei/logs_and_checkpoint/openvla-7b-oft-finetuned-libero-spatial+mshab_prepare_groceries+b48+lr-0.0005+lora-r32+dropout-0.0--image_aug--no_action_head_only_fridge_state42_action13_no_proprio_only_success--10000_chkpt"
     use_fast: False
     trust_remote_code: True
     padding_side: "right"
