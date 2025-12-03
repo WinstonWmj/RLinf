@@ -207,6 +207,7 @@ class ManiskillHABEnv(gym.Env):
         return extracted_obs
 
     def _calc_step_reward(self, reward, info):
+        reward = reward.to(device=self.env.device, dtype=torch.float32)
         if getattr(self.cfg, "reward_mode", "default") == "raw":
             return reward
         # reward = torch.zeros(self.num_envs, dtype=torch.float32).to(
