@@ -113,7 +113,7 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
         assert projected_patch_embeddings.shape[1] == n_patch_tokens  # 512
 
         # add proprio embedding:
-        if hasattr(self, "proprio_projector") is not None and proprio is not None:
+        if hasattr(self, "proprio_projector") and proprio is not None:
             proprio = torch.Tensor(proprio).to(projected_patch_embeddings.device, dtype=projected_patch_embeddings.dtype)
             # projected_patch_embeddings: (bsz, num_patches * num_images, llm_dim)
             # proprio: (bsz, proprio_dim) or (propro_dim,)
@@ -332,8 +332,9 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
         )  # [B, L + act + 1]
 
         # multimodal
+        proprio_states = env_obs.get("states", None)
         mm_embeddings, mm_attention_mask = self._build_embedding(
-            input_ids, attention_mask, pixel_values, proprio=env_obs["states"]
+            input_ids, attention_mask, pixel_values, proprio=proprio_states
         )
         multimodal_position_ids = mm_attention_mask.cumsum(dim=1) - 1
 

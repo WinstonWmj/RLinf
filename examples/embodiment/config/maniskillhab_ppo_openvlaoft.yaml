@@ -42,9 +42,9 @@ algorithm:
   normalize_advantages: True
   kl_penalty: kl  # how to estimate kl divergence: kl or kl_penalty
   group_size: 1
-  n_chunk_steps: 200  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
+  n_chunk_steps: 20  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
   n_eval_chunk_steps: 10
-  num_group_envs: 256
+  num_group_envs: 4
   rollout_epoch: 1
   reward_type: action_level
   logprob_type: token_level
@@ -111,8 +111,8 @@ actor:
   training_backend: "fsdp"
   checkpoint_load_path: "/mnt/mnt/public_zgc/chenjiawei/logs_and_checkpoint/7_dim_no_action_head--2000_chkpt"
   checkpoint_save_path: "../results"
-  micro_batch_size: 256
-  global_batch_size: 12800
+  micro_batch_size: 16
+  global_batch_size: 64
   seed: 1234
   enable_offload: True
 
@@ -121,9 +121,9 @@ actor:
     policy_setup: "fetch"
     value_type: ${algorithm.reward_type}  # 'action' or 'token'
     action_dim: 13  # can be set 12 or 13, according to the control_mode
-    proprio_dim: 42  # qpos + qvel + ... = 12 + 12 + ... = 24
+    proprio_dim: 7  # qpos + qvel + ... = 12 + 12 + ... = 24
     num_action_chunks: 8
-    use_proprio: True
+    use_proprio: False
     unnorm_key: mshab_prepare_groceries  # 'fetch_minmax' for debug
     center_crop: True
 

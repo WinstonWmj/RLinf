@@ -3,6 +3,7 @@
 export EMBODIED_PATH="$( cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export REPO_PATH=$(dirname $(dirname "$EMBODIED_PATH"))
 # export SRC_FILE="${EMBODIED_PATH}/test_cnn.py"
+# export SRC_FILE="${EMBODIED_PATH}/test_openvlaoft.py"
 export SRC_FILE="${EMBODIED_PATH}/test_maniskillhab.py"
 
 export MUJOCO_GL="egl"
@@ -33,7 +34,7 @@ export MS_ASSET_DIR="/root/.maniskill/ReplicaCAD"
 
 
 if [ -z "$1" ]; then
-    CONFIG_NAME="maniskillhab_ppo_cnn"
+    CONFIG_NAME="maniskillhab_ppo_openvlaoft"
 else
     CONFIG_NAME=$1
 fi

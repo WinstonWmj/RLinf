@@ -295,6 +295,8 @@ class ManiskillHABEnv(gym.Env):
         options: Optional[dict] = {},
     ):
         raw_obs, infos = self.env.reset(seed=seed, options=options)
+        state_dict = self.env.get_state_dict()
+        print("mjwei LOGGGGGG, state_dict['task_plan_idxs']=", state_dict['task_plan_idxs'])
         extracted_obs = self._wrap_obs(raw_obs)
         if "env_idx" in options:
             env_idx = options["env_idx"]
@@ -316,8 +318,6 @@ class ManiskillHABEnv(gym.Env):
                 if self.use_fixed_reset_state_ids
                 else {},
             )
-            state_dict = self.env.get_state_dict()
-            print("mjwei LOGGGGGG, state_dict['task_plan_idxs']=", state_dict['task_plan_idxs'])
             self._is_start = False
             terminations = torch.zeros(
                 self.num_envs, dtype=torch.bool, device=self.device
@@ -410,6 +410,7 @@ class ManiskillHABEnv(gym.Env):
         if self.use_fixed_reset_state_ids:
             options.update(task_plan_idxs=self.reset_state_ids[env_idx])
         extracted_obs, infos = self.reset(options=options)
+        print("now is auto reset")
         # gymnasium calls it final observation but it really is just o_{t+1} or the true next observation
         infos["final_observation"] = final_obs
         infos["final_info"] = final_info
