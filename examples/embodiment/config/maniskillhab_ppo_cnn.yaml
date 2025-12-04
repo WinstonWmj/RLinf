@@ -13,16 +13,16 @@ hydra:
 cluster:
   num_nodes: 1
   component_placement:
-    actor: 0
-    env: 0
-    rollout: 0
+    actor: all
+    env: all
+    rollout: all
 
 runner:
   task_type: embodied
   logger:
     log_path: "../results"
     project_name: rlinf
-    experiment_name: "test_openvla"
+    experiment_name: "test_cnn"
     logger_backends: ["tensorboard"] # wandb, swanlab
 
   max_epochs: 1000
@@ -44,7 +44,7 @@ algorithm:
   group_size: 1
   n_chunk_steps: 100
   n_eval_chunk_steps: 10
-  num_group_envs: 128
+  num_group_envs: 2
   rollout_epoch: 1
   reward_type: action_level
   logprob_type: action_level
@@ -111,8 +111,8 @@ actor:
   training_backend: "fsdp"
   checkpoint_load_path: "/mnt/mnt/public_zgc/datasets/arth-shukla/mshab_checkpoints/rl/set_table/open/fridge/policy.pt"
   checkpoint_save_path: "../results"
-  micro_batch_size: 800  # 12800/16
-  global_batch_size: 12800
+  micro_batch_size: 10  # 12800/16
+  global_batch_size: 200
   seed: 1234
   enable_offload: True
 
