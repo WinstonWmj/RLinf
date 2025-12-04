@@ -29,7 +29,7 @@ def main(cfg) -> None:
         # a = np.zeros((10, 13))
         extracted_obs, step_reward, terminations, truncations, infos = env.step(a)
         # breakpoint()
-        torch.save(extracted_obs, "/mnt/mnt/public/mjwei/repo/RLinf-1111/RLinf/extracted_obs.pt")
+        # torch.save(extracted_obs, "/mnt/mnt/public/mjwei/repo/RLinf-1111/RLinf/extracted_obs.pt")
         if i % 10 == 0:
             # 保存前十步的Video
             env.flush_video("test-mshab")

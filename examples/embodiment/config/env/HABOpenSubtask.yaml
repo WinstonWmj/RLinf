@@ -11,7 +11,7 @@ num_envs: ${multiply:${algorithm.group_size}, ${algorithm.num_group_envs}}
 only_eval: False
 
 video_cfg:
-  save_video: False
+  save_video: True
   info_on_video: True
   video_base_dir: ${runner.logger.log_path}/video/train
 
@@ -44,7 +44,7 @@ init_params:
   reward_mode: "normalized_dense"
   control_mode: "pd_joint_delta_pos"  # arm=arm_pd_joint_delta_pos(7-dim), gripper=gripper_pd_joint_pos(1-dim), body=body_pd_joint_delta_pos(head pan, head tilt, torso. 3-dim), base=base_pd_joint_vel(lin, ang. 2-dim),
   # control_mode: "pd_ee_delta_pose"  # arm=arm_pd_ee_delta_pose(6-dim), gripper=gripper_pd_joint_pos(1-dim), body=body_pd_joint_delta_pos(head pan, head tilt, torso. 3-dim), base=base_pd_joint_vel(lin, ang. 2-dim),
-  render_mode: "rgb_array"  # ('human', 'rgb_array', 'sensors', 'all')  https://maniskill.readthedocs.io/en/latest/api/mani_skill/envs/sapien_env/index.html#mani_skill.envs.sapien_env.BaseEnv.SUPPORTED_RENDER_MODES
+  render_mode: "all"  # ('human', 'rgb_array', 'sensors', 'all')  https://maniskill.readthedocs.io/en/latest/api/mani_skill/envs/sapien_env/index.html#mani_skill.envs.sapien_env.BaseEnv.SUPPORTED_RENDER_MODES
   shader_dir: "minimal"  # options: minimal, default, ... https://maniskill.readthedocs.io/en/latest/user_guide/concepts/sensors.html#shaders-and-textures
   robot_uids: "fetch"
   num_envs: ${multiply:${algorithm.group_size}, ${algorithm.num_group_envs}}
@@ -55,7 +55,7 @@ init_params:
     target_randomization: False
   sim_config:
     sim_freq: 120
-    control_freq: 30
+    control_freq: 20
   # sensor_config:
   #   shader_pack: "default"
 
