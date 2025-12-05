@@ -97,7 +97,7 @@ rollout:
     queue_size: 0
   mode: "colocate"
   backend: "huggingface"
-  model_dir: "/mnt/mnt/public_zgc/datasets/arth-shukla/mshab_checkpoints/rl/set_table/open/fridge/policy.pt"
+  model_dir: "/mnt/mnt/public/mjwei/repo/RLinf-1111/RLinf/logs/20251204-13:42:54/test_cnn/checkpoints/global_step_1/actor/model.pt"
   precision: ${actor.model.precision}
   enable_offload: True
   pipeline_stage_num: 1
@@ -109,7 +109,7 @@ actor:
     queue_name: "replay_buffer"
     queue_size: 0
   training_backend: "fsdp"
-  checkpoint_load_path: "/mnt/mnt/public_zgc/datasets/arth-shukla/mshab_checkpoints/rl/set_table/open/fridge/policy.pt"
+  checkpoint_load_path: "/mnt/mnt/public/mjwei/repo/RLinf-1111/RLinf/logs/20251204-13:42:54/test_cnn/checkpoints/global_step_1/actor/model.pt"
   checkpoint_save_path: "../results"
   micro_batch_size: 10  # 12800/16
   global_batch_size: 200

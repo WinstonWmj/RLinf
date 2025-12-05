@@ -1,0 +1,115 @@
+seed: 4682
+env:
+  env_id: PickSubtaskTrain-v0
+  num_envs: 63
+  max_episode_steps: 100
+  make_env: true
+  continuous_task: true
+  cat_state: true
+  cat_pixels: false
+  frame_stack: 3
+  stationary_base: false
+  stationary_torso: false
+  stationary_head: true
+  task_plan_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/set_table/pick/train/all.json
+  spawn_data_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/set_table/pick/train/spawn_data.pt
+  record_video: false
+  debug_video: false
+  debug_video_gen: false
+  save_video_freq: null
+  info_on_video: false
+  extra_stat_keys: []
+  env_kwargs:
+    robot_force_mult: 0.001
+    robot_force_penalty_min: 0.2
+    target_randomization: false
+eval_env:
+  env_id: PickSubtaskTrain-v0
+  num_envs: 63
+  max_episode_steps: 200
+  make_env: true
+  continuous_task: true
+  cat_state: true
+  cat_pixels: false
+  frame_stack: 3
+  stationary_base: false
+  stationary_torso: false
+  stationary_head: true
+  task_plan_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/set_table/pick/train/all.json
+  spawn_data_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/set_table/pick/train/spawn_data.pt
+  record_video: false
+  debug_video: false
+  debug_video_gen: false
+  save_video_freq: null
+  info_on_video: true
+  extra_stat_keys: []
+  env_kwargs:
+    robot_force_mult: 0.001
+    robot_force_penalty_min: 0.2
+    target_randomization: false
+algo:
+  name: sac
+  replay_buffer_capacity: 995400
+  total_timesteps: 50000000
+  num_steps: 100
+  init_steps: 200000
+  batch_size: 512
+  critic_encoder_tau: 0.005
+  cnn_features:
+  - 32
+  - 64
+  - 128
+  - 256
+  cnn_filters:
+  - 3
+  - 3
+  - 3
+  - 3
+  cnn_strides:
+  - 2
+  - 2
+  - 2
+  - 2
+  cnn_padding: valid
+  encoder_pixels_feature_dim: 50
+  encoder_state_feature_dim: 50
+  detach_encoder: false
+  critic_hidden_dims:
+  - 256
+  - 256
+  - 256
+  critic_lr: 0.0003
+  critic_layer_norm: true
+  critic_dropout: null
+  critic_beta: 0.9
+  critic_tau: 0.005
+  critic_target_update_freq: 2
+  actor_hidden_dims:
+  - 256
+  - 256
+  - 256
+  actor_lr: 0.0003
+  actor_beta: 0.9
+  actor_log_std_min: -20
+  actor_log_std_max: 2
+  actor_update_freq: 2
+  gamma: 0.9
+  init_temperature: 0.1
+  alpha_lr: 0.0003
+  alpha_beta: 0.9
+  log_freq: 10000
+  save_freq: 100000
+  eval_freq: 100000
+  torch_deterministic: true
+  save_backup_ckpts: false
+  eval_episodes: 189
+  num_envs: 63
+  num_eval_envs: 63
+  num_iterations: 793651
+logger:
+  workspace: mshab_exps
+  exp_name: rcad-set_table-pick-all
+  clear_out: true
+  tensorboard: true
+  wandb: false
+model_ckpt: "mshab_checkpoints/rl/set_table/pick/all/policy.pt"
