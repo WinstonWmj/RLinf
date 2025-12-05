@@ -908,3 +908,11 @@ class EmbodiedFSDPActor(FSDPModelManager, Worker):
     def set_global_step(self, global_step):
         if hasattr(self.model, "set_global_step"):
             self.model.set_global_step(global_step)
+
+    def save_checkpoint(self, save_path, step):
+        torch.distributed.barrier()
+        model_state = self.get_model_state_dict()
+        if self._rank == 0:
+            os.makedirs(save_path, exist_ok=True)
+            torch.save({"agent": model_state}, os.path.join(save_path, "model.pt"))
+        torch.distributed.barrier()

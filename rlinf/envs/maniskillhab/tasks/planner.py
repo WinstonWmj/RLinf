@@ -254,9 +254,6 @@ def plan_data_from_file(config_path: str = None) -> PlanData:
     for task_plan_data in plan_data["plans"]:
         build_config_name = task_plan_data["build_config_name"]
         init_config_name = task_plan_data["init_config_name"]
-        accept_uid = ["set_table-open-train-17503-0", "set_table-open-train-17853-0", "set_table-open-train-3279-0", "set_table-open-train-12855-0"]
-        if task_plan_data["subtasks"][0]["uid"] not in accept_uid:
-            continue
         subtasks = []
         for subtask in task_plan_data["subtasks"]:
             subtask_type = subtask["type"]

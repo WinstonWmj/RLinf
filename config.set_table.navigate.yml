@@ -1,0 +1,98 @@
+seed: 2337
+env:
+  env_id: NavigateSubtaskTrain-v0
+  num_envs: 189
+  max_episode_steps: 1000
+  make_env: true
+  obs_mode: rgbd
+  render_mode: all
+  shader_dir: minimal
+  continuous_task: false
+  cat_state: true
+  cat_pixels: false
+  frame_stack: 3
+  stack: null
+  stationary_base: false
+  stationary_torso: false
+  stationary_head: true
+  task_plan_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/set_table/navigate/train/all.json
+  spawn_data_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/set_table/navigate/train/spawn_data.pt
+  record_video: false
+  debug_video: false
+  debug_video_gen: false
+  save_video_freq: null
+  info_on_video: false
+  extra_stat_keys: []
+  env_kwargs:
+    robot_force_mult: 0.001
+    robot_force_penalty_min: 0.2
+    target_randomization: false
+    task_cfgs:
+      navigate:
+        horizon: 1000
+eval_env:
+  env_id: NavigateSubtaskTrain-v0
+  num_envs: 63
+  max_episode_steps: 1000
+  make_env: true
+  obs_mode: rgbd
+  render_mode: all
+  shader_dir: minimal
+  continuous_task: false
+  cat_state: true
+  cat_pixels: false
+  frame_stack: 3
+  stack: null
+  stationary_base: false
+  stationary_torso: false
+  stationary_head: true
+  task_plan_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/task_plans/set_table/navigate/train/all.json
+  spawn_data_fp: ~/.maniskill/data/scene_datasets/replica_cad_dataset/rearrange/spawn_data/set_table/navigate/train/spawn_data.pt
+  record_video: false
+  debug_video: false
+  debug_video_gen: false
+  save_video_freq: 10
+  info_on_video: false
+  extra_stat_keys: []
+  env_kwargs:
+    robot_force_mult: 0.001
+    robot_force_penalty_min: 0.2
+    target_randomization: false
+    task_cfgs:
+      navigate:
+        horizon: 1000
+algo:
+  name: ppo
+  total_timesteps: 1000000000
+  learning_rate: 0.0003
+  anneal_lr: false
+  gamma: 0.95
+  gae_lambda: 0.9
+  num_minibatches: 16
+  update_epochs: 8
+  norm_adv: true
+  clip_coef: 0.2
+  clip_vloss: false
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  target_kl: 0.2
+  log_freq: 250000
+  save_freq: 250000
+  eval_freq: null
+  finite_horizon_gae: true
+  torch_deterministic: true
+  save_backup_ckpts: false
+  num_steps: 100
+  num_envs: 189
+  num_eval_envs: 63
+  batch_size: 18900
+  minibatch_size: 1181
+  num_iterations: 52911
+logger:
+  workspace: mshab_exps
+  exp_name: rcad-set_table-navigate-all
+  clear_out: true
+  tensorboard: true
+  wandb: false
+model_ckpt: "mshab_checkpoints/rl/set_table/navigate/all/policy.pt"
