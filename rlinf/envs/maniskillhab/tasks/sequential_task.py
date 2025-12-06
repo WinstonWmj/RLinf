@@ -159,7 +159,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         self._randomize_build_configs_per_env = randomize_build_configs_per_env
         self._add_event_tracker_info = add_event_tracker_info
         self._invisible_goals_in_human_render = invisible_goals_in_human_render
-
+        # breakpoint()
         self.base_task_plans = dict(
             (tuple([subtask.uid for subtask in tp.subtasks]), tp) for tp in task_plans
         )
@@ -659,17 +659,17 @@ class SequentialTaskEnv(SceneManipulationEnv):
             ] = self.bc_to_task_plans[bc]
 
         num_bcis = len(self.build_config_idx_to_task_plans.keys())
-        # assert (
-        #     not self._require_build_configs_repeated_equally_across_envs
-        #     or self.num_envs % num_bcis == 0
-        # ), f"These task plans cover {num_bcis} build configs, but received {self.num_envs} envs. Either change the task plan list, change num_envs, or set require_build_configs_repeated_equally_across_envs=False. Note if require_build_configs_repeated_equally_across_envs=False and num_envs % num_build_configs != 0, then a) if num_envs > num_build_configs, then some build configs might be built in more parallel envs than others (meaning associated task plans will be sampled more frequently), and b) if num_envs < num_build_configs, then some build configs might not be built at all (meaning associated task plans will not be used)."
+        assert (
+            not self._require_build_configs_repeated_equally_across_envs
+            or self.num_envs % num_bcis == 0
+        ), f"These task plans cover {num_bcis} build configs, but received {self.num_envs} envs. Either change the task plan list, change num_envs, or set require_build_configs_repeated_equally_across_envs=False. Note if require_build_configs_repeated_equally_across_envs=False and num_envs % num_build_configs != 0, then a) if num_envs > num_build_configs, then some build configs might be built in more parallel envs than others (meaning associated task plans will be sampled more frequently), and b) if num_envs < num_build_configs, then some build configs might not be built at all (meaning associated task plans will not be used)."
         # if num_bcis < self.num_envs, repeat bcis and truncate at self.num_envs
         
-        rng = np.random.default_rng()
+        # breakpoint()
         self.build_config_idxs: List[int] = options.get(
             "build_config_idxs",
             (
-                rng.choice(
+                self._episode_rng.choice(
                     list(self.build_config_idx_to_task_plans.keys()),
                     size=self.num_envs,
                     replace=True,
@@ -708,7 +708,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
     def _initialize_episode(self, env_idx: torch.Tensor, options):
         with torch.device(self.device):
             self.robot_cumulative_force[env_idx] = 0
-            torch.seed()  # 让PyTorch重新用系统随机源初始化
+            # torch.seed()  # 让PyTorch重新用系统随机源初始化
             if env_idx.numel() == self.num_envs:
                 self.task_plan_idxs: torch.Tensor = options.get("task_plan_idxs", None)
             if self.task_plan_idxs is None or env_idx.numel() < self.num_envs:
@@ -726,6 +726,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 self.build_config_idx_to_task_plans[bci][tpi]
                 for bci, tpi in zip(self.build_config_idxs, self.task_plan_idxs)
             ]
+            # breakpoint()
             self.init_config_idxs = [
                 self.scene_builder.init_config_names_to_idxs[tp.init_config_name]
                 for tp in sampled_task_plans
