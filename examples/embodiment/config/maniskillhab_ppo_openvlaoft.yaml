@@ -36,7 +36,7 @@ runner:
 
 algorithm:
   update_epoch: 1
-  auto_reset: True
+  auto_reset: False
   ignore_terminations: True
   use_fixed_reset_state_ids: False  # =True: reset之后仍是相同的 episode id; =False: 相同的scene_id但是不同的episode
   normalize_advantages: True
@@ -44,7 +44,7 @@ algorithm:
   group_size: 1
   n_chunk_steps: 20  # total 50M steps, max_episode_length=200, chunksize=8, group_size = 20, n_chunk_steps per RL step is 125; So: 50m steps = 250k episodes = 31250 chunks; So total RL steps maybe 12~13!!
   n_eval_chunk_steps: 10
-  num_group_envs: 4
+  num_group_envs: 1
   rollout_epoch: 1
   reward_type: action_level
   logprob_type: token_level
