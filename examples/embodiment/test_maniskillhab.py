@@ -4,7 +4,6 @@ import numpy as np
 from tqdm import tqdm
 import os
 import json
-from replay_training_data import load_h5_episodes
 from rlinf.envs.maniskillhab.maniskillhab_env import ManiskillHABEnv
 
 fridge_json = "/mnt/mnt/public_zgc/datasets/arth-shukla/MS-HAB-SetTable/open/fridge.json"
