@@ -252,12 +252,9 @@ def plan_data_from_file(config_path: str = None) -> PlanData:
         print(f"{suffix} not supported")
 
     plans = []
-    SUBTASK_UID = os.environ.get("SUBTASK_UID")
     for task_plan_data in plan_data["plans"]:
         build_config_name = task_plan_data["build_config_name"]
         init_config_name = task_plan_data["init_config_name"]
-        if task_plan_data["subtasks"][0]['uid'] != SUBTASK_UID:
-            continue
         subtasks = []
         for subtask in task_plan_data["subtasks"]:
             subtask_type = subtask["type"]

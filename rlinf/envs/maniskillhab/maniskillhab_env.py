@@ -294,10 +294,9 @@ class ManiskillHABEnv(gym.Env):
         *,
         seed: Optional[Union[int, list[int]]] = None,
         options: Optional[dict] = {},
-        reset_kwargs = None
     ):
         # raw_obs, infos = self.env.reset(seed=seed, options=options)
-        raw_obs, infos = self.env.reset(**reset_kwargs)
+        raw_obs, infos = self.env.reset()
         state_dict = self.env.get_state_dict()
         print("mjwei LOGGGGGG, state_dict['task_plan_idxs']=", state_dict['task_plan_idxs'])
         extracted_obs = self._wrap_obs(raw_obs)
@@ -310,20 +309,17 @@ class ManiskillHABEnv(gym.Env):
         return extracted_obs, infos
 
     def step(
-        self, actions: Union[Array, dict] = None, auto_reset=True, reset_kwargs = None
+        self, actions: Union[Array, dict] = None, auto_reset=True
     ) -> tuple[Array, Array, Array, Array, dict]:
         if actions is None:
             assert self._is_start, "Actions must be provided after the first reset."
         if self.is_start:
-            if reset_kwargs is not None:
-                extracted_obs, infos = self.reset(reset_kwargs=reset_kwargs)
-            else:
-                extracted_obs, infos = self.reset(
-                    seed=self.seed,
-                    options={"task_plan_idxs": self.reset_state_ids}  # {"episode_id": self.reset_state_ids}
-                    if self.use_fixed_reset_state_ids
-                    else {},
-                )
+            extracted_obs, infos = self.reset(
+                seed=self.seed,
+                options={"task_plan_idxs": self.reset_state_ids}  # {"episode_id": self.reset_state_ids}
+                if self.use_fixed_reset_state_ids
+                else {},
+            )
             self._is_start = False
             terminations = torch.zeros(
                 self.num_envs, dtype=torch.bool, device=self.device
