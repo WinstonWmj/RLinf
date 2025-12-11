@@ -75,6 +75,7 @@ class ManiskillHABEnv(gym.Env):
         env_args["task_plans"] = plan_data.plans  # length = 20k, define the build_config_name and init_config_name
         env_args["scene_builder_cls"] = plan_data.dataset  # string='ReplicaCADSetTableTrain'
         env_args["spawn_data_fp"] = cfg.spawn_data_fp  # ../pick/train/spawn_data.pt
+        # env_args["plan_ids"] = self.reset_state_ids
         self.env: BaseEnv = gym.make(
             id=env_args["id"],
             max_episode_steps=env_args["max_episode_steps"],
@@ -96,18 +97,10 @@ class ManiskillHABEnv(gym.Env):
         )  # [B, ]
         self.record_metrics = record_metrics
         self._is_start = True
-        # self._init_reset_state_ids()
+        self._init_reset_state_ids()
         self.info_logging_keys = ["is_src_obj_grasped", "consecutive_grasp", "success"]
         if self.record_metrics:
             self._init_metrics()
-
-    @property
-    def total_num_group_envs(self):
-        if hasattr(self.env.unwrapped, "total_num_trials"):
-            return self.env.unwrapped.total_num_trials
-        if hasattr(self.env, "xyz_configs") and hasattr(self.env, "quat_configs"):
-            return len(self.env.xyz_configs) * len(self.env.quat_configs)
-        return np.iinfo(np.uint8).max // 2  # TODO
 
     @property
     def num_envs(self):
@@ -139,16 +132,15 @@ class ManiskillHABEnv(gym.Env):
         self.update_reset_state_ids()
 
     def update_reset_state_ids(self):
-        # reset_state_ids = torch.randint(
-        #     low=0,
-        #     high=self.total_num_group_envs,
-        #     size=(self.num_group,),
-        #     generator=self._generator,
-        # )
-        # self.reset_state_ids = reset_state_ids.repeat_interleave(
-        #     repeats=self.group_size
-        # ).to(self.device)
-        self.reset_state_ids = torch.tensor([0, 0])
+        reset_state_ids = torch.randint(
+            low=0,
+            high=100,
+            size=(self.num_group,),
+            generator=self._generator,
+        )
+        self.reset_state_ids = reset_state_ids.repeat_interleave(
+            repeats=self.group_size
+        ).to(self.device)
 
     def _wrap_obs(self, raw_obs):
         if self.env.obs_mode == "state":
@@ -295,10 +287,14 @@ class ManiskillHABEnv(gym.Env):
         seed: Optional[Union[int, list[int]]] = None,
         options: Optional[dict] = {},
     ):
-        # raw_obs, infos = self.env.reset(seed=seed, options=options)
-        raw_obs, infos = self.env.reset()
+        breakpoint()
+        raw_obs, infos = self.env.reset(seed=[0, 0, 0, 0, 0, 0, 0, 0], options=options)
+        # raw_obs, infos = self.env.reset()
         state_dict = self.env.get_state_dict()
         print("mjwei LOGGGGGG, state_dict['task_plan_idxs']=", state_dict['task_plan_idxs'])
+        print("mjwei LOGGGGGG, state_dict['build_config_idxs']=", state_dict['build_config_idxs'])
+        print("mjwei LOGGGGGG, state_dict['init_config_idxs']=", state_dict['init_config_idxs'])
+        breakpoint()
         extracted_obs = self._wrap_obs(raw_obs)
         if "env_idx" in options:
             env_idx = options["env_idx"]

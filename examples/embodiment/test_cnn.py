@@ -28,7 +28,7 @@ def main(cfg) -> None:
     )
     kwargs["do_sample"] = cfg.actor.model.get("do_sample", True)
     
-    env_obs = torch.load("/mnt/mnt/public/mjwei/repo/RLinf-1111/RLinf/extracted_obs.pt")
+    env_obs = torch.load("/mnt/mnt/public_zgc/home/mjwei/repo/RLinf/extracted_obs.pt")
     with torch.no_grad():
         actions, result = model.predict_action_batch(
             env_obs=env_obs,

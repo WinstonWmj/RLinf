@@ -681,7 +681,8 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 )[: self.num_envs].tolist()
             ),
         )
-        # breakpoint()
+        breakpoint()
+        self.build_config_idxs = [6, 6, 6, 6, 7, 7, 7, 7]
         self.num_task_plans_per_bci = torch.tensor(
             [
                 len(self.build_config_idx_to_task_plans[bci])
