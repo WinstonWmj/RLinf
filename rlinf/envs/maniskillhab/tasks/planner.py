@@ -1,29 +1,24 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
-
-import yaml
-from dacite import from_dict
+from typing import Optional, Union
 
 import numpy as np
-import torch
-
 import sapien
-
+import torch
+import yaml
+from dacite import from_dict
 from mani_skill.utils.structs import Pose
-
-import os
 
 """
 Task Planner Dataclasses
 """
 
-PointTuple = Union[Tuple[float, float, float], List[float]]
+PointTuple = Union[tuple[float, float, float], list[float]]
 RectCorners = Union[
-    Tuple[PointTuple, PointTuple, PointTuple, PointTuple], List[PointTuple]
+    tuple[PointTuple, PointTuple, PointTuple, PointTuple], list[PointTuple]
 ]
-HandleJointIdxAndRelativeHandlePosition = Tuple[int, PointTuple]
+HandleJointIdxAndRelativeHandlePosition = tuple[int, PointTuple]
 
 
 @dataclass
@@ -38,7 +33,7 @@ class ArticulationConfig:
 class Subtask:
     type: str = field(init=False)
     uid: str = field(init=False)
-    composite_subtask_uids: List[str] = field(init=False)
+    composite_subtask_uids: list[str] = field(init=False)
 
     def __post_init__(self):
         assert self.type in ["pick", "place", "navigate", "open", "close"]
@@ -63,7 +58,7 @@ class SubtaskConfig:
         assert self.robot_resting_qpos_tolerance >= 0
         assert self.robot_resting_qpos_tolerance_grasping >= 0
 
-    def update(self, update_dict: Dict):
+    def update(self, update_dict: dict):
         for k, v in update_dict.items():
             if getattr(self, k, None) is not None:
                 setattr(self, k, v)
@@ -90,9 +85,9 @@ class PickSubtaskConfig(SubtaskConfig):
 class PlaceSubtask(Subtask):
     obj_id: str
     goal_rectangle_corners: Optional[
-        Union[List[str], RectCorners, List[RectCorners]]
+        Union[list[str], RectCorners, list[RectCorners]]
     ] = None
-    goal_pos: Optional[Union[PointTuple, List[PointTuple], str]] = None
+    goal_pos: Optional[Union[PointTuple, list[PointTuple], str]] = None
     validate_goal_rectangle_corners: bool = True
     articulation_config: Optional[ArticulationConfig] = None
 
@@ -125,9 +120,9 @@ class PlaceSubtask(Subtask):
                 / (np.linalg.norm(sides0, axis=1) * np.linalg.norm(sides1, axis=1))
             )
         )
-        assert np.all(
-            np.abs(points_angles - 90) < 1e-3
-        ), f"Should have points in ABCD order, but got angles {points_angles} between sides AB/AD, BC/BA, CD/CB, DA/DC"
+        assert np.all(np.abs(points_angles - 90) < 1e-3), (
+            f"Should have points in ABCD order, but got angles {points_angles} between sides AB/AD, BC/BA, CD/CB, DA/DC"
+        )
         return rect_corners
 
 
@@ -183,19 +178,19 @@ class OpenSubtask(Subtask, ArticulationConfig):
 class OpenSubtaskConfig(SubtaskConfig):
     task_id: int = 3
     robot_cumulative_force_limit: float = 10_000
-    joint_qpos_open_thresh_frac: Dict[str, float] = field(default_factory=dict)
+    joint_qpos_open_thresh_frac: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()
 
         assert isinstance(self.joint_qpos_open_thresh_frac, dict)
-        assert (
-            "default" in self.joint_qpos_open_thresh_frac
-        ), "joint_qpos_open_thresh_frac requires default value to cover cases where a different articulation is opened"
+        assert "default" in self.joint_qpos_open_thresh_frac, (
+            "joint_qpos_open_thresh_frac requires default value to cover cases where a different articulation is opened"
+        )
         for v in self.joint_qpos_open_thresh_frac.values():
-            assert (
-                isinstance(v, float) and 0 <= v and v <= 1
-            ), f"joint_qpos_open_thresh_frac should be a float in [0, 1], instead got {v}"
+            assert isinstance(v, float) and 0 <= v and v <= 1, (
+                f"joint_qpos_open_thresh_frac should be a float in [0, 1], instead got {v}"
+            )
 
 
 @dataclass
@@ -221,7 +216,7 @@ class CloseSubtaskConfig(SubtaskConfig):
 
 @dataclass
 class TaskPlan:
-    subtasks: List[Subtask]
+    subtasks: list[Subtask]
     build_config_name: Optional[str] = None
     init_config_name: Optional[str] = None
 
@@ -234,7 +229,7 @@ Reading Task Plan from file
 @dataclass
 class PlanData:
     dataset: str
-    plans: List[TaskPlan]
+    plans: list[TaskPlan]
 
 
 def plan_data_from_file(config_path: str = None) -> PlanData:

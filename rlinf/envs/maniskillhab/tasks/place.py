@@ -1,7 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any
 
 import torch
-
 from mani_skill.envs.utils import randomization
 from mani_skill.utils.geometry.rotation_conversions import quaternion_raw_multiply
 from mani_skill.utils.registration import register_env
@@ -38,14 +37,13 @@ class PlaceSubtaskTrainEnv(SubtaskTrainEnv):
         self,
         *args,
         robot_uids="fetch",
-        task_plans: List[TaskPlan] = [],
+        task_plans: list[TaskPlan] = [],
         **kwargs,
     ):
-
         tp0 = task_plans[0]
-        assert len(tp0.subtasks) == 1 and isinstance(
-            tp0.subtasks[0], PlaceSubtask
-        ), f"Task plans for {self.__class__.__name__} must be one {PlaceSubtask.__name__} long"
+        assert len(tp0.subtasks) == 1 and isinstance(tp0.subtasks[0], PlaceSubtask), (
+            f"Task plans for {self.__class__.__name__} must be one {PlaceSubtask.__name__} long"
+        )
 
         self.subtask_cfg = self.place_cfg
 
@@ -84,7 +82,7 @@ class PlaceSubtaskTrainEnv(SubtaskTrainEnv):
     # REWARD
     # -------------------------------------------------------------------------------------------------
 
-    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: Dict):
+    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: dict):
         with torch.device(self.device):
             reward = torch.zeros(self.num_envs)
 
@@ -270,7 +268,7 @@ class PlaceSubtaskTrainEnv(SubtaskTrainEnv):
         return reward
 
     def compute_normalized_dense_reward(
-        self, obs: Any, action: torch.Tensor, info: Dict
+        self, obs: Any, action: torch.Tensor, info: dict
     ):
         max_reward = 44.0
         return self.compute_dense_reward(obs=obs, action=action, info=info) / max_reward

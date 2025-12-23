@@ -1,12 +1,10 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
-
-import trimesh
+from typing import Any, Literal, Optional
 
 import numpy as np
 import torch
-
+import trimesh
 from mani_skill import ASSET_DIR
 from mani_skill.utils import common
 from mani_skill.utils.geometry.rotation_conversions import (
@@ -19,10 +17,14 @@ from mani_skill.utils.structs.articulation import Articulation
 from mani_skill.utils.structs.link import Link
 from mani_skill.utils.structs.pose import Pose
 
+from rlinf.envs.maniskillhab.utils.array import (
+    tensor_intersection,
+    tensor_intersection_idx,
+)
+
 from .planner import NavigateSubtask, NavigateSubtaskConfig, TaskPlan
 from .sequential_task import GOAL_POSE_Q
 from .subtask import SubtaskTrainEnv
-from rlinf.envs.maniskillhab.utils.array import tensor_intersection, tensor_intersection_idx
 
 
 @register_env("NavigateSubtaskTrain-v0", max_episode_steps=1000)
@@ -51,17 +53,18 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
         self,
         *args,
         robot_uids="fetch",
-        task_plans: List[TaskPlan] = [],
+        task_plans: list[TaskPlan] = [],
         dist_fn: Literal["euclidean", "geodesic"] = "geodesic",
         use_rot_rew: bool = True,
         restrict_articulation_target_area: bool = True,
         **kwargs,
     ):
-
         tp0 = task_plans[0]
         assert len(tp0.subtasks) == 1 and isinstance(
             tp0.subtasks[0], NavigateSubtask
-        ), f"Task plans for {self.__class__.__name__} must be one {NavigateSubtask.__name__} long"
+        ), (
+            f"Task plans for {self.__class__.__name__} must be one {NavigateSubtask.__name__} long"
+        )
 
         self.subtask_cfg = self.navigate_cfg
         self.use_geodesic = dist_fn == "geodesic"
@@ -76,7 +79,7 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
 
     def _load_scene(self, options):
         super()._load_scene(options)
-        self.premade_goal_list: List[Actor] = [
+        self.premade_goal_list: list[Actor] = [
             self._make_goal(
                 radius=0.15,
                 name="goal_0",
@@ -143,7 +146,7 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
                     dists
                 )
 
-    def _apply_premade_spawns(self, env_idx, options: Dict):
+    def _apply_premade_spawns(self, env_idx, options: dict):
         with torch.device(self.device):
             current_subtask = self.task_plan[0]
             batched_spawn_data = defaultdict(list)
@@ -158,7 +161,7 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
                 ],
                 spawn_selection_idxs,
             ):
-                spawn_data: Dict[str, torch.Tensor] = self.spawn_data[subtask_uid]
+                spawn_data: dict[str, torch.Tensor] = self.spawn_data[subtask_uid]
                 for k, v in spawn_data.items():
                     if spawn_selection_idx is None:
                         spawn_selection_idx = torch.randint(
@@ -256,7 +259,7 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
         env_idx: torch.Tensor,
         last_subtask0,
         subtask_num: int,
-        parallel_subtasks: List[NavigateSubtask],
+        parallel_subtasks: list[NavigateSubtask],
     ):
         obj_ids, obj_sis = [], []
         art_ids, art_sis = [], []
@@ -452,9 +455,9 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
             )
 
     def _is_navigated_close(self, env_idx: torch.Tensor, goal: Actor, _):
-        assert (
-            env_idx.numel() == self.num_envs
-        ), f"{self.__name__} should have nav in every env"
+        assert env_idx.numel() == self.num_envs, (
+            f"{self.__name__} should have nav in every env"
+        )
         navigated_close = (
             torch.norm(
                 goal.pose.p[env_idx, :2] - self.agent.base_link.pose.p[env_idx, :2],
@@ -522,7 +525,7 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
         info["distance_from_goal"] = self._compute_distance()
         return info
 
-    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: Dict):
+    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: dict):
         with torch.device(self.device):
             reward = torch.zeros(self.num_envs)
 
@@ -654,7 +657,7 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
         return reward
 
     def compute_normalized_dense_reward(
-        self, obs: Any, action: torch.Tensor, info: Dict
+        self, obs: Any, action: torch.Tensor, info: dict
     ):
         max_reward = 28.0 if self.use_rot_rew else 26.0
         return self.compute_dense_reward(obs=obs, action=action, info=info) / max_reward

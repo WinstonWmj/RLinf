@@ -1,14 +1,11 @@
 import copy
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import numpy as np
-import torch
-import torch.random
-import transforms3d
-
 import sapien
-
+import torch
+import transforms3d
 from mani_skill.agents.robots import Fetch
 from mani_skill.envs.scenes.base_env import SceneManipulationEnv
 from mani_skill.sensors.camera import CameraConfig
@@ -23,6 +20,13 @@ from mani_skill.utils.structs import Actor, Articulation, Pose
 from mani_skill.utils.structs.link import Link
 from mani_skill.utils.structs.pose import vectorize_pose
 from mani_skill.utils.structs.types import GPUMemoryConfig, SimConfig
+
+from rlinf.envs.maniskillhab.utils.array import (
+    all_equal,
+    all_same_type,
+    tensor_intersection,
+    tensor_intersection_idx,
+)
 
 from .planner import (
     ArticulationConfig,
@@ -40,13 +44,6 @@ from .planner import (
     SubtaskConfig,
     TaskPlan,
 )
-from rlinf.envs.maniskillhab.utils.array import (
-    all_equal,
-    all_same_type,
-    tensor_intersection,
-    tensor_intersection_idx,
-)
-
 
 UNIQUE_SUCCESS_SUBTASK_TYPE = 100
 GOAL_POSE_Q = transforms3d.quaternions.axangle2quat(
@@ -119,7 +116,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         self,
         *args,
         robot_uids="fetch",
-        task_plans: List[TaskPlan] = [],
+        task_plans: list[TaskPlan] = [],
         require_build_configs_repeated_equally_across_envs=False,
         randomize_build_configs_per_env=True,
         add_event_tracker_info=False,
@@ -127,7 +124,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         task_cfgs=dict(),
         **kwargs,
     ):
-        self.task_cfgs: Dict[str, SubtaskConfig] = dict(
+        self.task_cfgs: dict[str, SubtaskConfig] = dict(
             pick=self.pick_cfg,
             place=self.place_cfg,
             navigate=self.navigate_cfg,
@@ -139,9 +136,9 @@ class SequentialTaskEnv(SceneManipulationEnv):
         for k, v in task_cfg_update_dict.items():
             self.task_cfgs[k].update(v)
 
-        assert all_equal(
-            [len(plan.subtasks) for plan in task_plans]
-        ), "All parallel task plans must be the same length"
+        assert all_equal([len(plan.subtasks) for plan in task_plans]), (
+            "All parallel task plans must be the same length"
+        )
         assert all(
             [
                 all_same_type(parallel_subtasks)
@@ -150,9 +147,9 @@ class SequentialTaskEnv(SceneManipulationEnv):
         ), "All parallel task plans must have same subtask types in same order"
 
         if randomize_build_configs_per_env:
-            assert (
-                not require_build_configs_repeated_equally_across_envs
-            ), f"Received {randomize_build_configs_per_env=} but cannot randomize build configs per env with {require_build_configs_repeated_equally_across_envs=}"
+            assert not require_build_configs_repeated_equally_across_envs, (
+                f"Received {randomize_build_configs_per_env=} but cannot randomize build configs per env with {require_build_configs_repeated_equally_across_envs=}"
+            )
         self._require_build_configs_repeated_equally_across_envs = (
             require_build_configs_repeated_equally_across_envs
         )
@@ -163,7 +160,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         self.base_task_plans = dict(
             (tuple([subtask.uid for subtask in tp.subtasks]), tp) for tp in task_plans
         )
-        self.bc_to_task_plans: Dict[str, List[TaskPlan]] = defaultdict(list)
+        self.bc_to_task_plans: dict[str, list[TaskPlan]] = defaultdict(list)
         for tp in task_plans:
             self.bc_to_task_plans[tp.build_config_name].append(tp)
 
@@ -178,7 +175,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
     # -------------------------------------------------------------------------------------------------
 
     def _merge_pick_subtasks(
-        self, subtask_num: int, parallel_subtasks: List[PickSubtask]
+        self, subtask_num: int, parallel_subtasks: list[PickSubtask]
     ):
         merged_obj_name = f"obj_{subtask_num}"
         self.subtask_objs.append(
@@ -229,7 +226,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         self,
         env_idx: torch.Tensor,
         subtask_num: int,
-        parallel_subtasks: List[PlaceSubtask],
+        parallel_subtasks: list[PlaceSubtask],
     ):
         merged_obj_name = f"obj_{subtask_num}"
         self.subtask_objs.append(
@@ -285,7 +282,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         env_idx: torch.Tensor,
         last_subtask0: Subtask,
         subtask_num: int,
-        parallel_subtasks: List[NavigateSubtask],
+        parallel_subtasks: list[NavigateSubtask],
     ):
         self.subtask_goals.append(None)
         self.subtask_articulations.append(None)
@@ -303,7 +300,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
             self.task_plan.append(NavigateSubtask())
 
     def _merge_open_subtasks(
-        self, subtask_num: int, parallel_subtasks: List[OpenSubtask]
+        self, subtask_num: int, parallel_subtasks: list[OpenSubtask]
     ):
         subtask0 = parallel_subtasks[0]
 
@@ -351,7 +348,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         )
 
     def _merge_close_subtasks(
-        self, subtask_num: int, parallel_subtasks: List[CloseSubtask]
+        self, subtask_num: int, parallel_subtasks: list[CloseSubtask]
     ):
         subtask0 = parallel_subtasks[0]
 
@@ -407,16 +404,15 @@ class SequentialTaskEnv(SceneManipulationEnv):
     def process_task_plan(
         self,
         env_idx: torch.Tensor,
-        sampled_subtask_lists: List[List[Subtask]],
+        sampled_subtask_lists: list[list[Subtask]],
     ):
-
-        self.subtask_objs: List[Actor] = []
-        self.subtask_goals: List[Actor] = []
-        self.subtask_articulations: List[Articulation] = []
-        self.check_progressive_success_subtask_nums: List[int] = []
+        self.subtask_objs: list[Actor] = []
+        self.subtask_goals: list[Actor] = []
+        self.subtask_articulations: list[Articulation] = []
+        self.check_progressive_success_subtask_nums: list[int] = []
 
         # build new merged task_plan and merge actors of parallel task plants
-        self.task_plan: List[Subtask] = []
+        self.task_plan: list[Subtask] = []
         last_subtask0 = None
         for subtask_num, parallel_subtasks in enumerate(zip(*sampled_subtask_lists)):
             composite_subtask_uids = [subtask.uid for subtask in parallel_subtasks]
@@ -495,7 +491,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
     def _create_merged_actor_from_obj_ids(
         self,
-        obj_ids: List[str],
+        obj_ids: list[str],
         name: str = None,
     ):
         merged_obj = Actor.create_from_entities(
@@ -512,7 +508,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
     def _create_merged_actor_from_subtasks(
         self,
-        parallel_subtasks: List[Union[PickSubtask, PlaceSubtask]],
+        parallel_subtasks: list[Union[PickSubtask, PlaceSubtask]],
         name: str = None,
     ):
         return self._create_merged_actor_from_obj_ids(
@@ -527,7 +523,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
     def _create_merged_articulation_from_articulation_ids(
         self,
-        articulation_ids: List[str],
+        articulation_ids: list[str],
         name: str = None,
         merging_different_articulations: bool = False,
     ):
@@ -547,7 +543,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
     def _create_merged_articulation_from_subtasks(
         self,
-        parallel_subtasks: List[Union[OpenSubtask, CloseSubtask]],
+        parallel_subtasks: list[Union[OpenSubtask, CloseSubtask]],
         name: str = None,
         merging_different_articulations: bool = False,
     ):
@@ -559,7 +555,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
     def _make_goal(
         self,
-        pos: Union[Tuple[float, float, float], List[Tuple[float, float, float]]] = None,
+        pos: Union[tuple[float, float, float], list[tuple[float, float, float]]] = None,
         radius=0.15,
         name="goal_site",
         goal_type="sphere",
@@ -630,7 +626,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         return super()._after_reconfigure(options)
 
     def _load_scene(self, options):
-        self.premade_goal_list: List[Actor] = []
+        self.premade_goal_list: list[Actor] = []
         for subtask_num, subtask in enumerate(self.tp0.subtasks):
             if isinstance(subtask, PlaceSubtask):
                 goal = self._make_goal(
@@ -652,7 +648,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 goal = None
             self.premade_goal_list.append(goal)
 
-        self.build_config_idx_to_task_plans: Dict[int, List[TaskPlan]] = dict()
+        self.build_config_idx_to_task_plans: dict[int, list[TaskPlan]] = dict()
         for bc in self.bc_to_task_plans.keys():
             self.build_config_idx_to_task_plans[
                 self.scene_builder.build_config_names_to_idxs[bc]
@@ -662,11 +658,13 @@ class SequentialTaskEnv(SceneManipulationEnv):
         assert (
             not self._require_build_configs_repeated_equally_across_envs
             or self.num_envs % num_bcis == 0
-        ), f"These task plans cover {num_bcis} build configs, but received {self.num_envs} envs. Either change the task plan list, change num_envs, or set require_build_configs_repeated_equally_across_envs=False. Note if require_build_configs_repeated_equally_across_envs=False and num_envs % num_build_configs != 0, then a) if num_envs > num_build_configs, then some build configs might be built in more parallel envs than others (meaning associated task plans will be sampled more frequently), and b) if num_envs < num_build_configs, then some build configs might not be built at all (meaning associated task plans will not be used)."
+        ), (
+            f"These task plans cover {num_bcis} build configs, but received {self.num_envs} envs. Either change the task plan list, change num_envs, or set require_build_configs_repeated_equally_across_envs=False. Note if require_build_configs_repeated_equally_across_envs=False and num_envs % num_build_configs != 0, then a) if num_envs > num_build_configs, then some build configs might be built in more parallel envs than others (meaning associated task plans will be sampled more frequently), and b) if num_envs < num_build_configs, then some build configs might not be built at all (meaning associated task plans will not be used)."
+        )
         # if num_bcis < self.num_envs, repeat bcis and truncate at self.num_envs
-        
+
         # breakpoint()
-        self.build_config_idxs: List[int] = options.get(
+        self.build_config_idxs: list[int] = options.get(
             "build_config_idxs",
             (
                 self._episode_rng.choice(
@@ -681,8 +679,8 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 )[: self.num_envs].tolist()
             ),
         )
-        breakpoint()
-        self.build_config_idxs = [6, 6, 6, 6, 7, 7, 7, 7]
+        # breakpoint()
+        # self.build_config_idxs = [6, 6, 6, 6, 7, 7, 7, 7]
         self.num_task_plans_per_bci = torch.tensor(
             [
                 len(self.build_config_idx_to_task_plans[bci])
@@ -764,14 +762,16 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
         return state_dict
 
-    def set_state_dict(self, state_dict: Dict):
+    def set_state_dict(self, state_dict: dict):
         task_plan_idxs = common.to_tensor(state_dict.get("task_plan_idxs"))
         build_config_idxs = state_dict.get("build_config_idxs")
         init_config_idxs = state_dict.get("init_config_idxs")
 
         assert torch.all(
             torch.tensor(self.build_config_idxs) == torch.tensor(build_config_idxs)
-        ), f"Please pass the same task plan list when creating this env as was used in this state dict; currently built {self.build_config_idxs=}, state dict {build_config_idxs=}"
+        ), (
+            f"Please pass the same task plan list when creating this env as was used in this state dict; currently built {self.build_config_idxs=}, state dict {build_config_idxs=}"
+        )
 
         self._initialize_episode(
             torch.arange(self.num_envs), options=dict(task_plan_idxs=task_plan_idxs)
@@ -779,7 +779,9 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
         assert torch.all(
             torch.tensor(self.init_config_idxs) == torch.tensor(init_config_idxs)
-        ), f"Please pass the same task plan list when creating this env as was used in this state dict; currently init'd {self.init_config_idxs=}, state dict {init_config_idxs=}"
+        ), (
+            f"Please pass the same task plan list when creating this env as was used in this state dict; currently init'd {self.init_config_idxs=}, state dict {init_config_idxs=}"
+        )
 
         self.subtask_pointer = state_dict.get("subtask_pointer")
         self.subtask_steps_left = state_dict.get("subtask_steps_left")
@@ -794,7 +796,6 @@ class SequentialTaskEnv(SceneManipulationEnv):
     # -------------------------------------------------------------------------------------------------
 
     def evaluate(self):
-
         robot_force = (
             self.agent.robot.get_net_contact_forces(self.force_articulation_link_ids)
             .norm(dim=-1)
@@ -806,7 +807,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         self.ee_rest_world_pose: Pose = (
             self.agent.base_link.pose * self.ee_rest_pos_wrt_base
         )
-        self.handle_world_poses: List[Union[Pose, None]] = []
+        self.handle_world_poses: list[Union[Pose, None]] = []
         for subtask, articulation in zip(self.task_plan, self.subtask_articulations):
             if isinstance(subtask, OpenSubtask) or isinstance(subtask, CloseSubtask):
                 self.handle_world_poses.append(
@@ -821,9 +822,9 @@ class SequentialTaskEnv(SceneManipulationEnv):
             self._progressive_task_check_success()
         )
 
-        success_checkers[
-            "cumulative_force_within_limit"
-        ] |= self.subtask_pointer >= len(self.task_plan)
+        success_checkers["cumulative_force_within_limit"] |= (
+            self.subtask_pointer >= len(self.task_plan)
+        )
 
         move_to_next_subtask = (
             subtask_success
@@ -1466,7 +1467,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
     #       wrappers or task-specific envs to mask out unnecessary vals
     #       - subtasks that don't need that obs will set some default value
     #       - subtasks which need that obs will set value depending on subtask params
-    def _get_obs_extra(self, info: Dict):
+    def _get_obs_extra(self, info: dict):
         base_pose_inv = self.agent.base_link.pose.inv()
 
         # all subtasks will have same computation for
@@ -1533,11 +1534,11 @@ class SequentialTaskEnv(SceneManipulationEnv):
     #       If need to train a subtask, extend this class to define a subtask
     # -------------------------------------------------------------------------------------------------
 
-    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: Dict):
+    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: dict):
         return self.subtask_pointer
 
     def compute_normalized_dense_reward(
-        self, obs: Any, action: torch.Tensor, info: Dict
+        self, obs: Any, action: torch.Tensor, info: dict
     ):
         max_reward = 1.0
         return self.compute_dense_reward(obs=obs, action=action, info=info) / max_reward

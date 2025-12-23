@@ -3,7 +3,6 @@ from typing import Sequence, Union
 
 import numpy as np
 import torch
-
 from mani_skill.utils.structs.types import Array
 
 

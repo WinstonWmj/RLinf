@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 from omegaconf.dictconfig import DictConfig
 from tqdm import tqdm
@@ -69,6 +68,7 @@ class EmbodiedRunnerProfile:
     def generate_rollouts(self):
         print("enter generate_rollouts func")
         import time
+
         start_time = time.time()
         env_futures = self.env.interact()
         rollout_futures = self.rollout.generate()

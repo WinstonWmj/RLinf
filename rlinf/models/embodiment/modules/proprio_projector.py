@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 
 
 class ProprioProjector(nn.Module):
@@ -21,6 +21,7 @@ class ProprioProjector(nn.Module):
     mjwei NOTE: follow the official implement in OpenVLA-OFT github.
     Projects proprio state inputs into the LLM's embedding space.
     """
+
     def __init__(self, llm_dim: int, proprio_dim: int) -> None:
         super().__init__()
         self.llm_dim = llm_dim
@@ -37,11 +38,10 @@ class ProprioProjector(nn.Module):
         )
         if self.fc1.bias is not None:
             nn.init.zeros_(self.fc1.bias)
-            
+
         nn.init.normal_(self.fc2.weight, mean=0.0, std=0.02)
         if self.fc2.bias is not None:
             nn.init.zeros_(self.fc2.bias)
-
 
     def forward(self, proprio: torch.Tensor = None) -> torch.Tensor:
         # proprio: (bsz, proprio_dim)
@@ -49,4 +49,3 @@ class ProprioProjector(nn.Module):
         projected_features = self.act_fn1(projected_features)
         projected_features = self.fc2(projected_features)
         return projected_features
-        

@@ -13,11 +13,10 @@
 # limitations under the License.
 
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import numpy as np
 
 
 def compute_logprobs_from_logits(logits, target):
@@ -56,6 +55,7 @@ def weight_init(m):
         gain = nn.init.calculate_gain("relu")
         nn.init.orthogonal_(m.weight.data[:, :, mid, mid], gain)
 
+
 def get_out_shape(in_shape, layers):
     x = torch.randn(*in_shape).unsqueeze(0)
     return np.prod(layers(x).shape)
@@ -63,8 +63,9 @@ def get_out_shape(in_shape, layers):
 
 def gaussian_logprob(noise, log_std):
     """Compute Gaussian log probability."""
-    residual = (-0.5 * noise.pow(2) - log_std)
+    residual = -0.5 * noise.pow(2) - log_std
     return residual - 0.5 * np.log(2 * np.pi) * noise.size(-1)
+
 
 def squash(mu, pi, log_pi):
     """Apply squashing function.

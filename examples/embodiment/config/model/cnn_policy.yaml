@@ -1,0 +1,15 @@
+model_type: "cnn_policy"
+
+model_path: ""
+
+policy_setup: "fetch"
+obs_dim: 42
+action_dim: 13
+num_action_chunks: 1
+hidden_dim: 256
+
+precision: "32"
+add_value_head: True
+
+is_lora: False
+lora_rank: 32

@@ -1,11 +1,7 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List
 
 import torch
-
-import sapien.physx as physx
-
 from mani_skill.utils.structs import Pose
 
 from .planner import Subtask, TaskPlan
@@ -31,7 +27,7 @@ class SubtaskTrainEnv(SequentialTaskEnv):
         self,
         *args,
         robot_uids="fetch",
-        task_plans: List[TaskPlan] = [],
+        task_plans: list[TaskPlan] = [],
         # additional spawn randomization, shouldn't need to change
         spawn_data_fp=None,
         # colliison tracking
@@ -42,9 +38,9 @@ class SubtaskTrainEnv(SequentialTaskEnv):
         **kwargs,
     ):
         tp0 = task_plans[0]
-        assert len(tp0.subtasks) == 1 and isinstance(
-            tp0.subtasks[0], Subtask
-        ), f"Task plans for {self.__class__.__name__} must be one {Subtask.__name__} long"
+        assert len(tp0.subtasks) == 1 and isinstance(tp0.subtasks[0], Subtask), (
+            f"Task plans for {self.__class__.__name__} must be one {Subtask.__name__} long"
+        )
 
         # spawn vals
         self.spawn_data_fp = Path(spawn_data_fp)
@@ -58,9 +54,9 @@ class SubtaskTrainEnv(SequentialTaskEnv):
         self.target_randomization = target_randomization
 
         self.subtask_cfg = getattr(self, "subtask_cfg", None)
-        assert (
-            self.subtask_cfg is not None
-        ), "Need to designate self.subtask_cfg (in extending env)"
+        assert self.subtask_cfg is not None, (
+            "Need to designate self.subtask_cfg (in extending env)"
+        )
 
         super().__init__(*args, robot_uids=robot_uids, task_plans=task_plans, **kwargs)
 
@@ -68,13 +64,12 @@ class SubtaskTrainEnv(SequentialTaskEnv):
     # RECONFIGURE AND INIT
     # -------------------------------------------------------------------------------------------------
 
-
     def _after_reconfigure(self, options):
         self.spawn_data = torch.load(self.spawn_data_fp, map_location=self.device)
         self.spawn_selection_idxs = [None] * self.num_envs
         return super()._after_reconfigure(options)
 
-    def _initialize_episode(self, env_idx, options: Dict):
+    def _initialize_episode(self, env_idx, options: dict):
         super()._initialize_episode(env_idx, options)
         self._reset_stats(env_idx)
         self._apply_premade_spawns(env_idx, options)
@@ -100,7 +95,7 @@ class SubtaskTrainEnv(SequentialTaskEnv):
             self.episode_stats["consecutive_grasp"][env_idx] = False
         self.extra_stats = {}
 
-    def _apply_premade_spawns(self, env_idx, options: Dict):
+    def _apply_premade_spawns(self, env_idx, options: dict):
         with torch.device(self.device):
             current_subtask = self.task_plan[0]
             batched_spawn_data = defaultdict(list)
@@ -115,7 +110,7 @@ class SubtaskTrainEnv(SequentialTaskEnv):
                 ],
                 spawn_selection_idxs,
             ):
-                spawn_data: Dict[str, torch.Tensor] = self.spawn_data[subtask_uid]
+                spawn_data: dict[str, torch.Tensor] = self.spawn_data[subtask_uid]
                 for k, v in spawn_data.items():
                     if spawn_selection_idx is None:
                         spawn_selection_idx = torch.randint(

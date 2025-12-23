@@ -1,23 +1,17 @@
 from copy import deepcopy
-from typing import Dict, Tuple
 
 import numpy as np
-import torch
-
 import sapien
 import sapien.physx as physx
-
+import torch
 from mani_skill import PACKAGE_ASSET_DIR
 from mani_skill.agents.base_agent import BaseAgent, Keyframe
 from mani_skill.agents.controllers import *
 from mani_skill.agents.registration import register_agent
-from mani_skill.sensors.camera import CameraConfig
 from mani_skill.utils import common, sapien_utils
 from mani_skill.utils.structs import Pose
 from mani_skill.utils.structs.actor import Actor
 from mani_skill.utils.structs.link import Link
-from mani_skill.utils.structs.types import Array
-
 
 FETCH_WHEELS_COLLISION_BIT = 30
 """Collision bit of the fetch robot wheel links"""
@@ -364,8 +358,8 @@ class Fetch1Cam(BaseAgent):
             self.robot.get_links(), "head_camera_link"
         )
 
-        self.queries: Dict[
-            str, Tuple[physx.PhysxGpuContactPairImpulseQuery, Tuple[int]]
+        self.queries: dict[
+            str, tuple[physx.PhysxGpuContactPairImpulseQuery, tuple[int]]
         ] = dict()
 
     def is_grasping(self, object: Actor, min_force=0.5, max_angle=85):

@@ -5,19 +5,13 @@ from dataclasses import asdict
 from functools import partial
 from pathlib import Path
 
-from tqdm import tqdm
-
-from gymnasium import spaces
-
+# ManiSkill specific imports
 import numpy as np
 import torch
-
-# ManiSkill specific imports
-import mani_skill.envs
+from gymnasium import spaces
 from mani_skill import ASSET_DIR
 from mani_skill.utils import common
 from mani_skill.utils.structs.pose import Pose
-
 from mshab.agents.ppo import Agent as PPOAgent
 from mshab.agents.sac.agent import Agent as SACAgent
 from mshab.envs.make import EnvConfig, make_env
@@ -27,7 +21,7 @@ from mshab.utils.config import parse_cfg
 from mshab.utils.label_dataset import get_episode_label_and_events
 from mshab.utils.logger import Logger, LoggerConfig
 from mshab.utils.time import NonOverlappingTimeProfiler
-
+from tqdm import tqdm
 
 NUM_ENVS = 252
 SEED = 2024

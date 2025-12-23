@@ -3,28 +3,17 @@ import random
 import sys
 import time
 from collections import defaultdict, deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dacite import from_dict
-from omegaconf import OmegaConf
-from tqdm import tqdm
-
-from gymnasium import spaces
-
+# ManiSkill specific imports
 import numpy as np
 import torch
-
-# ManiSkill specific imports
-import mani_skill.envs
+from gymnasium import spaces
 from mani_skill import ASSET_DIR
-from mani_skill import logger as ms_logger
 from mani_skill.utils import common
-
-from mshab.agents.bc import Agent as BCAgent
-from mshab.agents.dp import Agent as DPAgent
 from mshab.agents.ppo import Agent as PPOAgent
 from mshab.agents.sac import Agent as SACAgent
 from mshab.envs.make import EnvConfig, make_env
@@ -34,7 +23,7 @@ from mshab.utils.array import recursive_slice, to_tensor
 from mshab.utils.config import parse_cfg
 from mshab.utils.logger import Logger, LoggerConfig
 from mshab.utils.time import NonOverlappingTimeProfiler
-
+from tqdm import tqdm
 
 if TYPE_CHECKING:
     from mshab.envs import SequentialTaskEnv

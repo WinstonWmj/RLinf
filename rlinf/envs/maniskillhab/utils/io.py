@@ -2,7 +2,6 @@
 
 import json
 import re
-
 from _ctypes import PyObj_FromPtr  # see https://stackoverflow.com/a/15012814/355230
 
 from mani_skill.utils.io_utils import CustomJsonEncoder

@@ -3,19 +3,12 @@ import multiprocessing as mp
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
-
-from tqdm import tqdm
 
 import gymnasium as gym
-
 import numpy as np
+import sapien
 import torch
 import transforms3d
-
-import sapien
-
-import mani_skill.envs
 from mani_skill import ASSET_DIR
 from mani_skill.envs.scenes.base_env import SceneManipulationEnv
 from mani_skill.utils.scene_builder.replicacad.rearrange import (
@@ -31,7 +24,6 @@ from mani_skill.utils.scene_builder.replicacad.rearrange.scene_builder import (
 )
 from mani_skill.utils.structs import Pose
 from mani_skill.utils.structs.pose import to_sapien_pose
-
 from mshab.envs.planner import (
     CloseSubtask,
     NavigateSubtask,
@@ -41,7 +33,7 @@ from mshab.envs.planner import (
     TaskPlan,
     plan_data_from_file,
 )
-
+from tqdm import tqdm
 
 GOAL_POSE_Q = transforms3d.quaternions.axangle2quat(
     np.array([0, 1, 0]), theta=np.deg2rad(90)
@@ -96,7 +88,7 @@ def gen_pick_spawn_data(
     proc_num,
     args: GenSpawnPositionArgs,
     scene_builder_cls,
-    task_plans: List[TaskPlan],
+    task_plans: list[TaskPlan],
 ):
     build_config_name = task_plans[0].build_config_name
     env = make_env(scene_builder_cls)
@@ -295,7 +287,7 @@ def gen_place_spawn_data(
     proc_num,
     args: GenSpawnPositionArgs,
     scene_builder_cls,
-    task_plans: List[TaskPlan],
+    task_plans: list[TaskPlan],
 ):
     build_config_name = task_plans[0].build_config_name
     env = make_env(scene_builder_cls)
@@ -508,7 +500,7 @@ def gen_open_spawn_data(
     proc_num,
     args: GenSpawnPositionArgs,
     scene_builder_cls,
-    task_plans: List[TaskPlan],
+    task_plans: list[TaskPlan],
 ):
     build_config_name = task_plans[0].build_config_name
     env = make_env(scene_builder_cls)
@@ -677,7 +669,7 @@ def gen_close_spawn_data(
     proc_num,
     args: GenSpawnPositionArgs,
     scene_builder_cls,
-    task_plans: List[TaskPlan],
+    task_plans: list[TaskPlan],
 ):
     build_config_name = task_plans[0].build_config_name
     env = make_env(scene_builder_cls)
@@ -875,7 +867,7 @@ def gen_navigate_spawn_data(
     proc_num,
     args: GenSpawnPositionArgs,
     scene_builder_cls,
-    task_plans: List[TaskPlan],
+    task_plans: list[TaskPlan],
 ):
     build_config_name = task_plans[0].build_config_name
     env = make_env(scene_builder_cls)
@@ -1285,7 +1277,7 @@ def main():
     )
     os.makedirs(output_dir, exist_ok=True)
 
-    torch.save(subtask_uid_to_spawn_data, output_dir / f"spawn_data.pt")
+    torch.save(subtask_uid_to_spawn_data, output_dir / "spawn_data.pt")
 
     print("finished in", time.time() - stime, "seconds")
 

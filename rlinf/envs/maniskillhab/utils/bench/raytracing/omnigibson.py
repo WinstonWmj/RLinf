@@ -1,4 +1,3 @@
-import argparse
 import json
 import math
 import os
@@ -7,13 +6,9 @@ from dataclasses import dataclass
 
 import omnigibson as og
 import omnigibson.utils.transform_utils as T
-from omnigibson.macros import gm
-from omnigibson.object_states import Covered
-from omnigibson.utils.constants import PrimType
-from omnigibson.utils.profiling_utils import ProfilingEnv
-
 import torch as th
-
+from omnigibson.macros import gm
+from omnigibson.utils.profiling_utils import ProfilingEnv
 
 OUTPUT_FP = "bench_results/og_raytracing.json"
 
@@ -79,9 +74,9 @@ def main():
             )
 
     if args.scene:
-        assert (
-            args.scene in SCENE_OFFSET
-        ), f"Scene {args.scene} not found in SCENE_OFFSET"
+        assert args.scene in SCENE_OFFSET, (
+            f"Scene {args.scene} not found in SCENE_OFFSET"
+        )
         cfg["scene"] = {
             "type": "InteractiveTraversableScene",
             "scene_model": args.scene,

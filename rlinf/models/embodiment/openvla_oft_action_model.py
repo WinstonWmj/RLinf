@@ -30,13 +30,19 @@ from rlinf.models.embodiment.model_utils import (
     compute_entropy_from_logits,
     compute_logprobs_from_logits,
 )
-from rlinf.models.embodiment.modules.value_head import ValueHead
 from rlinf.models.embodiment.modules.proprio_projector import ProprioProjector
+from rlinf.models.embodiment.modules.value_head import ValueHead
 
 
 class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
     def __init__(
-        self, config: OpenVLAOFTConfig, action_dim, proprio_dim, num_action_chunks, add_value_head, use_proprio
+        self,
+        config: OpenVLAOFTConfig,
+        action_dim,
+        proprio_dim,
+        num_action_chunks,
+        add_value_head,
+        use_proprio,
     ) -> None:
         super().__init__(config)
 
@@ -72,7 +78,9 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
                 proprio_dim=proprio_dim,
             )
 
-    def _set_constants(self,):
+    def _set_constants(
+        self,
+    ):
         # Assign constants to global variables
         if self.unnorm_key == "mshab_prepare_groceries":
             self.ACTION_PROPRIO_NORMALIZATION_TYPE = NormalizationType.BOUNDS_Q99
@@ -102,7 +110,9 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
             True  # [B, L + act + 1], [many x 0; act x 1; 0]
         )
         billm_embeddings = self.get_input_embeddings()
-        input_embeddings = billm_embeddings(input_ids)  # [B, L + act + 1, D]  # 128 + action_dim*actionchunk, without <EOS> token!
+        input_embeddings = billm_embeddings(
+            input_ids
+        )  # [B, L + act + 1, D]  # 128 + action_dim*actionchunk, without <EOS> token!
         input_embeddings = input_embeddings * (~all_actions_mask.unsqueeze(-1))
 
         # vision
@@ -114,15 +124,22 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
 
         # add proprio embedding:
         if hasattr(self, "proprio_projector") and proprio is not None:
-            proprio = torch.Tensor(proprio).to(projected_patch_embeddings.device, dtype=projected_patch_embeddings.dtype)
+            proprio = torch.Tensor(proprio).to(
+                projected_patch_embeddings.device,
+                dtype=projected_patch_embeddings.dtype,
+            )
             # projected_patch_embeddings: (bsz, num_patches * num_images, llm_dim)
             # proprio: (bsz, proprio_dim) or (propro_dim,)
-            proprio = proprio.reshape(projected_patch_embeddings.shape[0], -1)  # (bsz, proprio_dim)  # projected_patch_embeddings.shape = torch.Size([20, 512, 4096])
+            proprio = proprio.reshape(
+                projected_patch_embeddings.shape[0], -1
+            )  # (bsz, proprio_dim)  # projected_patch_embeddings.shape = torch.Size([20, 512, 4096])
             proprio_features = self.proprio_projector(proprio)  # (bsz, llm_dim)
             proprio_features = proprio_features.unsqueeze(dim=1)  # (bsz, 1, llm_dim)
             # For simplicity, just append proprio token to the end of projected vision patch tokens
-            projected_patch_embeddings = torch.cat((projected_patch_embeddings, proprio_features), dim=1)
-        
+            projected_patch_embeddings = torch.cat(
+                (projected_patch_embeddings, proprio_features), dim=1
+            )
+
         # multimodal embeddings
         projected_patch_embeddings = projected_patch_embeddings.reshape(
             input_embeddings.shape[0], -1, *projected_patch_embeddings.shape[2:]
@@ -185,7 +202,9 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
 
     def _unnormalize_actions(self, normalized_actions, unnorm_key=None):
         """Unnormalize actions using dataset statistics"""
-        action_norm_stats = self.get_action_stats(unnorm_key) if unnorm_key != "debug" else None
+        action_norm_stats = (
+            self.get_action_stats(unnorm_key) if unnorm_key != "debug" else None
+        )
 
         if self.ACTION_PROPRIO_NORMALIZATION_TYPE == NormalizationType.BOUNDS:
             mask = action_norm_stats.get(
@@ -204,12 +223,14 @@ class OpenVLAOFTForRLActionPrediction(OpenVLAOFTForActionPrediction):
                 np.array(action_norm_stats["q01"]),
             )
         else:
-            print("Unsupported action/proprio normalization type detected! Use Min-Max normalization!")
+            print(
+                "Unsupported action/proprio normalization type detected! Use Min-Max normalization!"
+            )
             action_dim = normalized_actions.shape[-1]
             mask = np.ones_like(action_dim, dtype=bool)
             action_high, action_low = (
-                np.array([1.0]*action_dim),
-                np.array([0.0]*action_dim),
+                np.array([1.0] * action_dim),
+                np.array([0.0] * action_dim),
             )
 
         action_dim = normalized_actions.shape[-1]

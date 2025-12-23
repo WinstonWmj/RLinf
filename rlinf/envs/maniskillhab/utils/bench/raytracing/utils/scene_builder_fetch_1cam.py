@@ -1,17 +1,13 @@
-import torch
-
 import sapien
-
+import torch
 from mani_skill.utils.scene_builder.registration import register_scene_builder
 from mani_skill.utils.scene_builder.replicacad import ReplicaCADSceneBuilder
-from mani_skill.utils.structs import Actor, Articulation
+from mani_skill.utils.structs import Articulation
 
 
 @register_scene_builder("ReplicaCAD1Cam")
 class ReplicaCADSceneBuilderFetch1Cam(ReplicaCADSceneBuilder):
-
     def initialize(self, env_idx: torch.Tensor):
-
         # teleport robot away for init
         self.env.agent.robot.set_pose(sapien.Pose([-10, 0, -100]))
 

@@ -1,7 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any
 
 import torch
-
 from mani_skill.envs.utils import randomization
 from mani_skill.utils.geometry.rotation_conversions import quaternion_raw_multiply
 from mani_skill.utils.registration import register_env
@@ -37,13 +36,13 @@ class PickSubtaskTrainEnv(SubtaskTrainEnv):
         self,
         *args,
         robot_uids="fetch",
-        task_plans: List[TaskPlan] = [],
+        task_plans: list[TaskPlan] = [],
         **kwargs,
     ):
         tp0 = task_plans[0]
-        assert len(tp0.subtasks) == 1 and isinstance(
-            tp0.subtasks[0], PickSubtask
-        ), f"Task plans for {self.__class__.__name__} must be one {PickSubtask.__name__} long"
+        assert len(tp0.subtasks) == 1 and isinstance(tp0.subtasks[0], PickSubtask), (
+            f"Task plans for {self.__class__.__name__} must be one {PickSubtask.__name__} long"
+        )
 
         self.subtask_cfg = self.pick_cfg
 
@@ -78,7 +77,7 @@ class PickSubtaskTrainEnv(SubtaskTrainEnv):
     # REWARD
     # -------------------------------------------------------------------------------------------------
 
-    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: Dict):
+    def compute_dense_reward(self, obs: Any, action: torch.Tensor, info: dict):
         with torch.device(self.device):
             reward = torch.zeros(self.num_envs)
 
@@ -222,38 +221,40 @@ class PickSubtaskTrainEnv(SubtaskTrainEnv):
         return reward
 
     def compute_normalized_dense_reward(
-        self, obs: Any, action: torch.Tensor, info: Dict
+        self, obs: Any, action: torch.Tensor, info: dict
     ):
         max_reward = 28.0
         return self.compute_dense_reward(obs=obs, action=action, info=info) / max_reward
-
 
     # -------------------------------------------------------------------------------------------------
     # INPUT: LANGUAGE INSTRUCTION
     # -------------------------------------------------------------------------------------------------
 
     def get_language_instruction(self):
-        '''
+        """
         obj_id is of format {ycb_num}_{name}-{instance_num}. the obj ids will be None for Close subtasks, since these don't involve objects.
-        '''
+        """
 
         instruct = []
         pick_task_plan = self.unwrapped.task_plan
         assert len(pick_task_plan) == 1 and isinstance(pick_task_plan[0], PickSubtask)
         for idx in range(self.num_envs):
             obj_ids = [
-                getattr(self.unwrapped.base_task_plans[(cid,)].subtasks[0], "obj_id", None)  # mjwei NOTE: the length of each subtasks should be 1, which is asserted in the initail of XXXSubTrainEnv, len(tp0.subtasks) == 1
+                getattr(
+                    self.unwrapped.base_task_plans[(cid,)].subtasks[0], "obj_id", None
+                )  # mjwei NOTE: the length of each subtasks should be 1, which is asserted in the initail of XXXSubTrainEnv, len(tp0.subtasks) == 1
                 for cid in pick_task_plan[0].composite_subtask_uids
             ]
         # print(obj_ids)  # outputs a list of obj_ids, eg ['007_tuna_fish_can-1', '003_cracker_box-0', '004_sugar_box-0', '005_tomato_soup_can-0']
         obj_name = [
-            id.split('_', 1)[1].rsplit('-', 1)[0].replace('_', ' ')
-            for id in obj_ids
+            id.split("_", 1)[1].rsplit("-", 1)[0].replace("_", " ") for id in obj_ids
         ]
         # print(obj_name)  # ['apple', 'bowl', 'apple', 'apple', 'bowl', 'bowl']
         instruct = []
         for idx in range(self.num_envs):
-            instruct.append(f"pick up the {obj_name[idx]}")  # In: What action should the robot take to {pick apple}?\nOut: 
+            instruct.append(
+                f"pick up the {obj_name[idx]}"
+            )  # In: What action should the robot take to {pick apple}?\nOut:
         return instruct
 
     def evaluate(self):
@@ -272,4 +273,5 @@ class PickSubtaskTrainEnv(SubtaskTrainEnv):
             consecutive_grasp = self.consecutive_grasp >= 5
             infos["consecutive_grasp"] = consecutive_grasp
             return infos
+
     # -------------------------------------------------------------------------------------------------

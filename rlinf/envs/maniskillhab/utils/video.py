@@ -1,16 +1,14 @@
 import os
-from typing import Dict, List, Optional
+from typing import Optional
 
 import cv2
-from tqdm import tqdm
-
 import numpy as np
-
 from mani_skill.utils.structs.types import Array
+from tqdm import tqdm
 
 
 def images_to_video(
-    images: List[Array],
+    images: list[Array],
     output_dir: str,
     video_name: str,
     fps: int = 10,
@@ -59,7 +57,7 @@ def images_to_video(
 
 def put_text_on_image(
     image: Array,
-    lines: List[str],
+    lines: list[str],
     rgb=(0, 255, 0),
     font_thickness=1,
 ):
@@ -90,7 +88,7 @@ def put_text_on_image(
 
 def append_text_to_image(
     image: Array,
-    lines: List[str],
+    lines: list[str],
     rgb=(255, 255, 255),
     font_thickness=1,
 ):
@@ -133,7 +131,7 @@ def append_text_to_image(
 
 def put_info_on_image(
     image,
-    info: Dict[str, float],
+    info: dict[str, float],
     extras=None,
     overlay=True,
     rgb=(0, 255, 0),

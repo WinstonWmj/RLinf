@@ -1,22 +1,16 @@
 import time
 from functools import partial
 
+import gymnasium as gym
 import psutil
 import pynvml
-from tqdm import tqdm
-
-import gymnasium as gym
-
 import torch
-
 from mani_skill.utils import sapien_utils
 from mani_skill.utils.structs.types import SimConfig
-
-from mshab.utils.bench.raytracing.utils.fetch_1cam import Fetch1Cam
 from mshab.utils.bench.raytracing.utils.scene_builder_fetch_1cam import (
     ReplicaCADSceneBuilderFetch1Cam,
 )
-
+from tqdm import tqdm
 
 env = gym.make(
     "SceneManipulation-v1",

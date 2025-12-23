@@ -3,34 +3,29 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import gymnasium as gym
-
 import numpy as np
 import torch
-
-import mani_skill.envs
 from mani_skill import ASSET_DIR
 from mani_skill.utils import io_utils
 from mani_skill.vector.wrappers.gymnasium import ManiSkillVectorEnv
-
 from mshab.utils.bench.interact_scene_builder import ReplicaCADInteractSceneBuilder
 from mshab.utils.io import NoIndent, NoIndentSupportingJSONEncoder
 from mshab.utils.profile import Profiler
 from mshab.utils.time import NonOverlappingTimeProfiler
-
 
 MS_SIM_CONFIG = dict(sim_freq=100, control_freq=20)
 
 
 def make_habitat_env(config_yaml_name="interact", concur_render=True, auto_sleep=True):
     import habitat  # type: ignore
-    import habitat_sim  # type: ignore
     from gym import spaces as old_gym_spaces  # type: ignore
-    from habitat_baselines.common.habitat_env_factory import HabitatVectorEnvFactory  # type: ignore
-
     from gymnasium import spaces
+    from habitat_baselines.common.habitat_env_factory import (
+        HabitatVectorEnvFactory,  # type: ignore
+    )
 
     def batch_spaces(b_spaces):
         if all(isinstance(s, old_gym_spaces.Box) for s in b_spaces):
@@ -90,7 +85,7 @@ def make_interact_env():
     )
 
 
-def make_env() -> Tuple[gym.vector.VectorEnv, bool]:
+def make_env() -> tuple[gym.vector.VectorEnv, bool]:
     if "Habitat" in args.bench_preset:
         config_yaml_name = "interact"
         concur_render, auto_sleep = True, True
@@ -175,8 +170,8 @@ def parse_args(args=None) -> BenchArgs:
     return BenchArgs(**parser.parse_args(args).__dict__)
 
 
-def save_stats(stats: Dict[str, Any], name="simple_bench"):
-    results: Dict[str, List] = dict()
+def save_stats(stats: dict[str, Any], name="simple_bench"):
+    results: dict[str, list] = dict()
     all_results_fp = args.result_dir / f"{name}.json"
     if Path(all_results_fp).exists():
         with open(all_results_fp, "r") as f:
@@ -184,7 +179,7 @@ def save_stats(stats: Dict[str, Any], name="simple_bench"):
     else:
         all_results = dict()
 
-    bench_preset_results: Dict = all_results.get(args.bench_preset, dict())
+    bench_preset_results: dict = all_results.get(args.bench_preset, dict())
     results = bench_preset_results.get(str(args.num_envs), dict())
 
     for k, v in stats.items():

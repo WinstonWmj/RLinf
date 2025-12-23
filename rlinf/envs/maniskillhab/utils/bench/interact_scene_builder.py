@@ -3,25 +3,20 @@ import json
 import os.path as osp
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
-import torch
-import transforms3d
-
 import sapien
 import sapien.physx as physx
-
+import torch
+import transforms3d
 from mani_skill import ASSET_DIR
 from mani_skill.agents.robots.fetch import (
     FETCH_BASE_COLLISION_BIT,
     FETCH_WHEELS_COLLISION_BIT,
-    Fetch,
 )
 from mani_skill.utils.building import actors
 from mani_skill.utils.scene_builder import SceneBuilder
 from mani_skill.utils.structs import Actor, Articulation
-
 
 IGNORE_FETCH_COLLISION_STRS = ["mat", "rug", "carpet"]
 
@@ -43,7 +38,7 @@ class ReplicaCADInteractSceneBuilder(SceneBuilder):
             "rt",
             encoding="utf-8",
         ) as f:
-            self.interact_config: Dict = json.load(f)["episodes"][0]
+            self.interact_config: dict = json.load(f)["episodes"][0]
 
         with open(
             ASSET_DIR
@@ -51,13 +46,13 @@ class ReplicaCADInteractSceneBuilder(SceneBuilder):
             / Path("/".join(self.interact_config["scene_id"].split("/")[1:])),
             "r",
         ) as f:
-            self.build_config: Dict = json.load(f)
+            self.build_config: dict = json.load(f)
 
     def build(self):
-        self.scene_objects: Dict[str, Actor] = dict()
-        self.movable_objects: Dict[str, Actor] = dict()
-        self.articulations: Dict[str, Articulation] = dict()
-        self._default_object_poses: List[Tuple[Actor, sapien.Pose]] = []
+        self.scene_objects: dict[str, Actor] = dict()
+        self.movable_objects: dict[str, Actor] = dict()
+        self.articulations: dict[str, Articulation] = dict()
+        self._default_object_poses: list[tuple[Actor, sapien.Pose]] = []
 
         q = transforms3d.quaternions.axangle2quat(
             np.array([1, 0, 0]), theta=np.deg2rad(90)
@@ -82,12 +77,11 @@ class ReplicaCADInteractSceneBuilder(SceneBuilder):
         builder.add_visual_from_file(bg_path)
         builder.add_nonconvex_collision_from_file(bg_path)
         builder.initial_pose = bg_pose
-        self.bg = builder.build_static(name=f"scene_background")
+        self.bg = builder.build_static(name="scene_background")
 
         # articulations
         articulation_to_num = defaultdict(int)
         for articulated_meta in self.build_config["articulated_object_instances"]:
-
             template_name = articulated_meta["template_name"]
             if "door" in template_name:
                 continue
@@ -139,7 +133,6 @@ class ReplicaCADInteractSceneBuilder(SceneBuilder):
             actor_id_to_num_made[actor_id] += 1
 
     def initialize(self, env_idx: torch.Tensor):
-
         # teleport robot away for init
         self.env.agent.robot.set_pose(sapien.Pose([-10, 0, -100]))
 

@@ -5,17 +5,11 @@ import os.path as osp
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List
-
-from lxml import etree as ET
-from tqdm import tqdm
 
 import numpy as np
-import transforms3d
-
 import sapien
-from sapien.wrapper.urchin import URDF
-
+import transforms3d
+from lxml import etree as ET
 from mani_skill import ASSET_DIR
 from mani_skill.utils.scene_builder import SceneBuilder
 from mani_skill.utils.scene_builder.replicacad.rearrange import (
@@ -26,7 +20,6 @@ from mani_skill.utils.scene_builder.replicacad.rearrange import (
     ReplicaCADTidyHouseTrainSceneBuilder,
     ReplicaCADTidyHouseValSceneBuilder,
 )
-
 from mshab.envs.planner import (
     ArticulationConfig,
     CloseSubtask,
@@ -35,11 +28,12 @@ from mshab.envs.planner import (
     PickSubtask,
     PlaceSubtask,
     PlanData,
-    Subtask,
     TaskPlan,
     plan_data_from_file,
 )
 from mshab.utils.array import all_equal
+from sapien.wrapper.urchin import URDF
+from tqdm import tqdm
 
 
 @dataclass
@@ -52,7 +46,7 @@ class GenTaskPlanArgs:
 
     def __post_init__(self):
         assert self.task in ["tidy_house", "prepare_groceries", "set_table"]
-        assert not self.subtask in ["open", "close"] or self.task == "set_table"
+        assert self.subtask not in ["open", "close"] or self.task == "set_table"
         assert self.subtask in [
             "pick",
             "place",
@@ -126,9 +120,9 @@ def gen_pick_task_plans(scene_builder):
                 #       SAPIEN left-appends an extra `''` joint so the links and joints correspond, so we follow suit
                 # NOTE (arth): not sure if this holds true for *all* articulations, or just these specific ones. mileage may vary
                 padded_joint_names = [""] + [j.name for j in robot.joints]
-                assert len(padded_joint_names) == len(
-                    robot.links
-                ), "Mismatch in num joints and links"
+                assert len(padded_joint_names) == len(robot.links), (
+                    "Mismatch in num joints and links"
+                )
 
                 handle_active_joint_idx = robot.actuated_joint_names.index(
                     padded_joint_names[handle_link_idx]
@@ -339,9 +333,9 @@ def gen_place_task_plans(scene_builder):
                 #       SAPIEN left-appends an extra `''` joint so the links and joints correspond, so we follow suit
                 # NOTE (arth): not sure if this holds true for *all* articulations, or just these specific ones. mileage may vary
                 padded_joint_names = [""] + [j.name for j in robot.joints]
-                assert len(padded_joint_names) == len(
-                    robot.links
-                ), "Mismatch in num joints and links"
+                assert len(padded_joint_names) == len(robot.links), (
+                    "Mismatch in num joints and links"
+                )
 
                 handle_active_joint_idx = robot.actuated_joint_names.index(
                     padded_joint_names[handle_link_idx]
@@ -413,9 +407,9 @@ def gen_open_task_plans(scene_builder):
             relevant_markers = [
                 m for m in markers if m["params"]["object"] == base_articulation_id
             ]
-            assert (
-                len(relevant_markers) > 0
-            ), f"No handle offset maker given for {base_articulation_id}"
+            assert len(relevant_markers) > 0, (
+                f"No handle offset maker given for {base_articulation_id}"
+            )
 
             if articulation_id in cached_urdfs:
                 robot = cached_urdfs[articulation_id]
@@ -447,9 +441,9 @@ def gen_open_task_plans(scene_builder):
             #       SAPIEN left-appends an extra `''` joint so the links and joints correspond, so we follow suit
             # NOTE (arth): not sure if this holds true for *all* articulations, or just these specific ones. mileage may vary
             padded_joint_names = [""] + [j.name for j in robot.joints]
-            assert len(padded_joint_names) == len(
-                robot.links
-            ), "Mismatch in num joints and links"
+            assert len(padded_joint_names) == len(robot.links), (
+                "Mismatch in num joints and links"
+            )
 
             handle_active_joint_idx = robot.actuated_joint_names.index(
                 padded_joint_names[handle_link_idx]
@@ -515,9 +509,9 @@ def gen_close_task_plans(scene_builder):
             relevant_markers = [
                 m for m in markers if m["params"]["object"] == base_articulation_id
             ]
-            assert (
-                len(relevant_markers) > 0
-            ), f"No handle offset maker given for {base_articulation_id}"
+            assert len(relevant_markers) > 0, (
+                f"No handle offset maker given for {base_articulation_id}"
+            )
 
             if articulation_id in cached_urdfs:
                 robot = cached_urdfs[articulation_id]
@@ -549,9 +543,9 @@ def gen_close_task_plans(scene_builder):
             #       SAPIEN left-appends an extra `''` joint so the links and joints correspond, so we follow suit
             # NOTE (arth): not sure if this holds true for *all* articulations, or just these specific ones. mileage may vary
             padded_joint_names = [""] + [j.name for j in robot.joints]
-            assert len(padded_joint_names) == len(
-                robot.links
-            ), "Mismatch in num joints and links"
+            assert len(padded_joint_names) == len(robot.links), (
+                "Mismatch in num joints and links"
+            )
 
             handle_active_joint_idx = robot.actuated_joint_names.index(
                 padded_joint_names[handle_link_idx]
@@ -625,9 +619,9 @@ def gen_navigate_task_plans(scene_builder):
         #       SAPIEN left-appends an extra `''` joint so the links and joints correspond, so we follow suit
         # NOTE (arth): not sure if this holds true for *all* articulations, or just these specific ones. mileage may vary
         padded_joint_names = [""] + [j.name for j in robot.joints]
-        assert len(padded_joint_names) == len(
-            robot.links
-        ), "Mismatch in num joints and links"
+        assert len(padded_joint_names) == len(robot.links), (
+            "Mismatch in num joints and links"
+        )
 
         handle_active_joint_idx = robot.actuated_joint_names.index(
             padded_joint_names[handle_link_idx]
@@ -858,7 +852,7 @@ def main():
             set_table=["open", "pick", "place", "close"] * 2,
         )[args.task]
 
-        subtask_to_plan_data: Dict[str, PlanData] = dict()
+        subtask_to_plan_data: dict[str, PlanData] = dict()
         for subtask_name in set(task_plan_order):
             fp = args.root / args.task / subtask_name / args.split / "all.json"
             print("Loading", str(fp) + "...")
@@ -874,8 +868,8 @@ def main():
         assert all_equal(num_plans_per_subtask) and all_equal(
             num_times_each_subtask_in_sequential_plan
         ), f"{num_plans_per_subtask}, {num_times_each_subtask_in_sequential_plan}"
-        num_plans_to_make = num_plans_per_subtask[0] // (
-            num_times_each_subtask_in_sequential_plan[0]
+        num_plans_to_make = (
+            num_plans_per_subtask[0] // (num_times_each_subtask_in_sequential_plan[0])
         )
         assert (
             num_plans_per_subtask[0] / num_times_each_subtask_in_sequential_plan[0]
@@ -893,9 +887,7 @@ def main():
             subtask_init_config_names = []
             for subtask_num, subtask_name in enumerate(task_plan_order):
                 nav_subtask = NavigateSubtask()
-                nav_subtask.uid = (
-                    f"{args.task}-{args.subtask}-{args.split}-{tp_num}-{subtask_num*2}"
-                )
+                nav_subtask.uid = f"{args.task}-{args.subtask}-{args.split}-{tp_num}-{subtask_num * 2}"
                 nav_subtask.composite_subtask_uids = [nav_subtask.uid]
                 subtasks.append(nav_subtask)
 
@@ -906,7 +898,7 @@ def main():
                 subtask_init_config_names.append(s_plan_data.init_config_name)
                 next_subtask = s_plan_data.subtasks[0]
 
-                next_subtask.uid = f"{args.task}-{args.subtask}-{args.split}-{tp_num}-{subtask_num*2+1}"
+                next_subtask.uid = f"{args.task}-{args.subtask}-{args.split}-{tp_num}-{subtask_num * 2 + 1}"
                 next_subtask.composite_subtask_uids = [next_subtask.uid]
 
                 if next_subtask.type == "close":
@@ -942,7 +934,7 @@ def main():
 
         return
 
-    all_task_plans: List[TaskPlan] = dict(
+    all_task_plans: list[TaskPlan] = dict(
         pick=gen_pick_task_plans,
         place=gen_place_task_plans,
         open=gen_open_task_plans,

@@ -1,15 +1,13 @@
-from typing import Dict
-
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions.normal import Normal
+
 from .modules.utils import layer_init
 
+
 class NatureCNN(nn.Module):
-    def __init__(
-        self, obs_dim, action_dim
-    ):
+    def __init__(self, obs_dim, action_dim):
         super().__init__()
 
         self.obs_dim = obs_dim
@@ -53,7 +51,7 @@ class NatureCNN(nn.Module):
         self.extractors = nn.ModuleDict(extractors)
 
     def forward(self, observations) -> torch.Tensor:
-        pixels: Dict[str, torch.Tensor] = observations["pixels"]
+        pixels: dict[str, torch.Tensor] = observations["pixels"]
         state: torch.Tensor = observations["state"]
         encoded_tensor_list = []
         for key, extractor in self.extractors.items():
@@ -72,15 +70,13 @@ class NatureCNN(nn.Module):
 
 
 class CNNPolicy(nn.Module):
-    def __init__(
-        self, obs_dim, action_dim, num_action_chunks, add_value_head
-    ):
+    def __init__(self, obs_dim, action_dim, num_action_chunks, add_value_head):
         super().__init__()
-        
+
         self.obs_dim = obs_dim
         self.action_dim = action_dim
         self.num_action_chunks = num_action_chunks
-        
+
         self.feature_net = NatureCNN(obs_dim, action_dim)
         latent_size = self.feature_net.out_features
         if add_value_head:
@@ -97,9 +93,7 @@ class CNNPolicy(nn.Module):
                 std=0.01 * np.sqrt(2),
             ),
         )
-        self.actor_logstd = nn.Parameter(
-            torch.ones(1, self.action_dim) * -0.5
-        )
+        self.actor_logstd = nn.Parameter(torch.ones(1, self.action_dim) * -0.5)
 
     def predict_action_batch(
         self, env_obs, calulate_logprobs=True, calulate_values=True, **kwargs
@@ -108,13 +102,17 @@ class CNNPolicy(nn.Module):
         precision = next(self.parameters()).dtype
         obs = {
             "pixels": {
-                "fetch_head_depth": env_obs["images"].to(device=device, dtype=precision),
-                "fetch_hand_depth": env_obs["wrist_images"].squeeze(1).to(device=device, dtype=precision),
+                "fetch_head_depth": env_obs["images"].to(
+                    device=device, dtype=precision
+                ),
+                "fetch_hand_depth": env_obs["wrist_images"]
+                .squeeze(1)
+                .to(device=device, dtype=precision),
             },
             "state": env_obs["states"].to(device=device, dtype=precision),
         }
         feat = self.feature_net(obs)
-        
+
         action_mean = self.action_head(feat)
 
         action_logstd = self.actor_logstd.expand_as(action_mean)
@@ -126,7 +124,7 @@ class CNNPolicy(nn.Module):
             action.reshape(-1, self.num_action_chunks, self.action_dim).cpu().numpy()
         )
         chunk_logprobs = probs.log_prob(action)
-        
+
         if hasattr(self, "value_head") and calulate_values:
             chunk_values = self.value_head(feat)
         else:
@@ -136,7 +134,7 @@ class CNNPolicy(nn.Module):
             "images": env_obs["images"],
             "wrist_images": env_obs["wrist_images"],
             "state": env_obs["states"],
-            "action": action
+            "action": action,
         }
         result = {
             "prev_logprobs": chunk_logprobs,
@@ -159,7 +157,9 @@ class CNNPolicy(nn.Module):
         obs = {
             "pixels": {
                 "fetch_head_depth": data["images"].to(device=device, dtype=precision),
-                "fetch_hand_depth": data["wrist_images"].squeeze(1).to(device=device, dtype=precision),
+                "fetch_hand_depth": data["wrist_images"]
+                .squeeze(1)
+                .to(device=device, dtype=precision),
             },
             "state": data["state"].to(device=device, dtype=precision),
         }
@@ -181,4 +181,3 @@ class CNNPolicy(nn.Module):
             values = self.value_head(feat)
             ret_dict["values"] = values.to(dtype=torch.float32)
         return ret_dict
-        

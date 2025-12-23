@@ -1,14 +1,6 @@
-import os.path as osp
-import warnings
-from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional, Union
 
-from dacite import from_dict
-from omegaconf import DictConfig, OmegaConf
-
-from mshab.envs.make import EnvConfig
-from mshab.utils.logger import LoggerConfig
+from omegaconf import OmegaConf
 
 
 def parse_cfg(cfg_path: str = None, default_cfg_path: str = None) -> OmegaConf:

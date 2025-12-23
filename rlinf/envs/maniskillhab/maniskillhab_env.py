@@ -18,8 +18,6 @@ from typing import Optional, Union
 import gymnasium as gym
 import numpy as np
 import torch
-from collections import deque
-from typing import Dict
 from mani_skill.envs.sapien_env import BaseEnv
 from mani_skill.utils import common, gym_utils
 from mani_skill.utils.common import torch_clone_dict
@@ -29,6 +27,7 @@ from mani_skill.utils.visualization.misc import (
     put_info_on_image,
     tile_images,
 )
+from omegaconf import open_dict
 from omegaconf.omegaconf import OmegaConf
 
 from rlinf.envs.maniskillhab.tasks.planner import plan_data_from_file
@@ -51,30 +50,44 @@ def extract_termination_from_info(info, num_envs, device):
 
 
 class ManiskillHABEnv(gym.Env):
-    def __init__(self, cfg, seed_offset, total_num_processes, record_metrics=True):
+    def __init__(
+        self, cfg, num_envs, seed_offset, total_num_processes, record_metrics=True
+    ):
         env_seed = cfg.seed
         self.seed = env_seed + seed_offset
         self.total_num_processes = total_num_processes
-        self.auto_reset = cfg.auto_reset
-        self.use_rel_reward = cfg.use_rel_reward
-        self.ignore_terminations = cfg.ignore_terminations
-        self.num_group = cfg.num_group
-        self.group_size = cfg.group_size
-        self.use_fixed_reset_state_ids = cfg.use_fixed_reset_state_ids
+        self.cfg = cfg
+        self.auto_reset = self.cfg.auto_reset
+        self.use_rel_reward = self.cfg.use_rel_reward
+        self.ignore_terminations = self.cfg.ignore_terminations
+        self.num_envs = num_envs
+        self.group_size = self.cfg.group_size
+        self.num_group = self.num_envs // self.group_size
+        self.use_fixed_reset_state_ids = self.cfg.use_fixed_reset_state_ids
 
-        self.video_cfg = cfg.video_cfg
+        self.ignore_terminations = self.cfg.ignore_terminations
+        self.auto_reset = self.cfg.auto_reset
+
+        self.video_cfg = self.cfg.video_cfg
         self.video_cnt = 0
         self.render_images = []
 
-        self.cfg = cfg
+        with open_dict(cfg):
+            self.cfg.init_params.num_envs = num_envs
+            self.cfg.init_params.max_episode_steps = self.cfg.max_episode_steps
 
-        env_args = OmegaConf.to_container(cfg.init_params, resolve=True)
-        print("cfg.task_plan_fp=", cfg.task_plan_fp)
-        plan_data = plan_data_from_file(cfg.task_plan_fp)
-        # breakpoint()
-        env_args["task_plans"] = plan_data.plans  # length = 20k, define the build_config_name and init_config_name
-        env_args["scene_builder_cls"] = plan_data.dataset  # string='ReplicaCADSetTableTrain'
-        env_args["spawn_data_fp"] = cfg.spawn_data_fp  # ../pick/train/spawn_data.pt
+        env_args = OmegaConf.to_container(self.cfg.init_params, resolve=True)
+        print("cfg.task_plan_fp=", self.cfg.task_plan_fp)
+        plan_data = plan_data_from_file(self.cfg.task_plan_fp)
+        env_args["task_plans"] = (
+            plan_data.plans
+        )  # length = 20k, define the build_config_name and init_config_name
+        env_args["scene_builder_cls"] = (
+            plan_data.dataset
+        )  # string='ReplicaCADSetTableTrain'
+        env_args["spawn_data_fp"] = (
+            self.cfg.spawn_data_fp
+        )  # ../pick/train/spawn_data.pt
         # env_args["plan_ids"] = self.reset_state_ids
         self.env: BaseEnv = gym.make(
             id=env_args["id"],
@@ -102,9 +115,9 @@ class ManiskillHABEnv(gym.Env):
         if self.record_metrics:
             self._init_metrics()
 
-    @property
-    def num_envs(self):
-        return self.env.unwrapped.num_envs
+    # @property
+    # def num_envs(self):
+    #     return self.env.unwrapped.num_envs
 
     @property
     def device(self):
@@ -148,7 +161,7 @@ class ManiskillHABEnv(gym.Env):
         else:
             wrapped_obs = self._extract_obs_image(raw_obs)
         return wrapped_obs
-    
+
     def _wrap_action(self, actions):
         # NOTE: this is suitable for 'Fetch' robot.
         if self.cfg.controller_config.stationary_base:
@@ -162,24 +175,53 @@ class ManiskillHABEnv(gym.Env):
         return actions
 
     def _extract_obs_image(self, raw_obs):
-        proprio_states = torch.cat([_agent_state for _agent_state in raw_obs["agent"].values()], dim=1)  # 'qpos', 'qvel'
+        proprio_states = torch.cat(
+            [_agent_state for _agent_state in raw_obs["agent"].values()], dim=1
+        )  # 'qpos', 'qvel'
         extra_obs = raw_obs["extra"]  # extra_obs = extract_obs["extra"]
-        extra_obs['is_grasped'] = extra_obs['is_grasped'].unsqueeze(1)
-        extra_obs_cat = torch.cat([_agent_state for _agent_state in extra_obs.values()], dim=1)  # 'tcp_pose_wrt_base', 'obj_pose_wrt_base', 'goal_pos_wrt_base', 'is_grasped']
-        fetch_head_depth, fetch_hand_depth, fetch_head_rgb, fetch_hand_rgb = None, None, None, None
-        if self.cfg.init_params.obs_mode == "depth" or self.cfg.init_params.obs_mode == "rgbd":
-            fetch_head_depth = raw_obs["sensor_data"]["fetch_head"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
-            fetch_hand_depth = raw_obs["sensor_data"]["fetch_hand"]["depth"].permute(0, 3, 1, 2)  # [B, C, H, W]
-        if self.cfg.init_params.obs_mode == "rgb" or self.cfg.init_params.obs_mode == "rgbd":
-            fetch_head_rgb = raw_obs["sensor_data"]["fetch_head"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
-            fetch_hand_rgb = raw_obs["sensor_data"]["fetch_hand"]["rgb"].to(torch.uint8).permute(0, 3, 1, 2)  # [B, C, H, W]
+        extra_obs["is_grasped"] = extra_obs["is_grasped"].unsqueeze(1)
+        extra_obs_cat = torch.cat(
+            [_agent_state for _agent_state in extra_obs.values()], dim=1
+        )  # 'tcp_pose_wrt_base', 'obj_pose_wrt_base', 'goal_pos_wrt_base', 'is_grasped']
+        fetch_head_depth, fetch_hand_depth, fetch_head_rgb, fetch_hand_rgb = (
+            None,
+            None,
+            None,
+            None,
+        )
+        if (
+            self.cfg.init_params.obs_mode == "depth"
+            or self.cfg.init_params.obs_mode == "rgbd"
+        ):
+            fetch_head_depth = raw_obs["sensor_data"]["fetch_head"]["depth"].permute(
+                0, 3, 1, 2
+            )  # [B, C, H, W]
+            fetch_hand_depth = raw_obs["sensor_data"]["fetch_hand"]["depth"].permute(
+                0, 3, 1, 2
+            )  # [B, C, H, W]
+        if (
+            self.cfg.init_params.obs_mode == "rgb"
+            or self.cfg.init_params.obs_mode == "rgbd"
+        ):
+            fetch_head_rgb = (
+                raw_obs["sensor_data"]["fetch_head"]["rgb"]
+                .to(torch.uint8)
+                .permute(0, 3, 1, 2)
+            )  # [B, C, H, W]
+            fetch_hand_rgb = (
+                raw_obs["sensor_data"]["fetch_hand"]["rgb"]
+                .to(torch.uint8)
+                .permute(0, 3, 1, 2)
+            )  # [B, C, H, W]
 
         extracted_obs = {
             "fetch_head_rgb": fetch_head_rgb,
             "fetch_hand_rgb": fetch_hand_rgb,
             "fetch_head_depth": fetch_head_depth,
             "fetch_hand_depth": fetch_hand_depth,
-            "states": torch.cat([proprio_states, extra_obs_cat], dim=1),  # cat all states together, so the shape will be torch.Size([bsz, 42])
+            "states": torch.cat(
+                [proprio_states, extra_obs_cat], dim=1
+            ),  # cat all states together, so the shape will be torch.Size([bsz, 42])
             # "states": extra_obs['tcp_pose_wrt_base'],  # cat qpos and qvel together, so the shape will be torch.Size([bsz, 7])
             "extra": extra_obs,
         }
@@ -189,25 +231,27 @@ class ManiskillHABEnv(gym.Env):
         mjwei NOTE: the reason for stacking frame 3 times is the `in_channels` of CNN is 3 and the input_sizes of Prismatic Model is also 3.
         """
         for sk in ["fetch_head_depth", "fetch_hand_depth"]:
-            extracted_obs[sk] = extracted_obs[sk].repeat(1, 3, 1, 1)  # [B, C=1, H, W] —> # [B, C=3, H, W]
+            extracted_obs[sk] = extracted_obs[sk].repeat(
+                1, 3, 1, 1
+            )  # [B, C=1, H, W] —> # [B, C=3, H, W]
         if self.cfg.init_params.use_depth_only:
             extracted_obs["images"] = extracted_obs["fetch_head_depth"]  # [B, C, H, W]
-            extracted_obs["wrist_images"] = extracted_obs["fetch_hand_depth"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
+            extracted_obs["wrist_images"] = extracted_obs["fetch_hand_depth"].unsqueeze(
+                1
+            )  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
         else:
             extracted_obs["images"] = extracted_obs["fetch_head_rgb"]  # [B, C, H, W]
-            extracted_obs["wrist_images"] = extracted_obs["fetch_hand_rgb"].unsqueeze(1)  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
+            extracted_obs["wrist_images"] = extracted_obs["fetch_hand_rgb"].unsqueeze(
+                1
+            )  # [B, N_IMG, C, H, W]  # N_IMG is for how many hands/arms?
         return extracted_obs
 
     def _calc_step_reward(self, reward, info):
-        reward = reward.to(device=self.env.device, dtype=torch.float32)
         if getattr(self.cfg, "reward_mode", "default") == "raw":
             return reward
-        # reward = torch.zeros(self.num_envs, dtype=torch.float32).to(
-        #     self.env.device
-        # )  # [B, ]
-        # reward += info["is_src_obj_grasped"] * 0.1
-        # reward += info["consecutive_grasp"] * 0.1
-        # reward += (info["success"] & info["is_src_obj_grasped"]) * 1.0
+        reward = torch.zeros(self.num_envs, dtype=torch.float32).to(
+            self.env.unwrapped.device
+        )  # [B, ]
         # diff
         reward_diff = reward - self.prev_step_reward
         self.prev_step_reward = reward
@@ -227,12 +271,11 @@ class ManiskillHABEnv(gym.Env):
         self.returns = torch.zeros(
             self.num_envs, device=self.device, dtype=torch.float32
         )
+        # extra infos of mshab
         self.is_grasped = torch.zeros(
             self.num_envs, device=self.device, dtype=torch.bool
         )
-        self.ee_rest = torch.zeros(
-            self.num_envs, device=self.device, dtype=torch.bool
-        )
+        self.ee_rest = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         self.robot_rest = torch.zeros(
             self.num_envs, device=self.device, dtype=torch.bool
         )
@@ -272,12 +315,14 @@ class ManiskillHABEnv(gym.Env):
         episode_info["episode_len"] = self.elapsed_steps.clone()
         episode_info["reward"] = episode_info["return"] / episode_info["episode_len"]
 
-        # extra infos
+        # extra infos of mshab
         episode_info["is_grasped"] = infos["is_grasped"]
         episode_info["ee_rest"] = infos["ee_rest"]
         episode_info["robot_rest"] = infos["robot_rest"]
         episode_info["is_static"] = infos["is_static"]
-        episode_info["cumulative_force_within_limit"] = infos["cumulative_force_within_limit"]
+        episode_info["cumulative_force_within_limit"] = infos[
+            "cumulative_force_within_limit"
+        ]
         infos["episode"] = episode_info
         return infos
 
@@ -285,48 +330,40 @@ class ManiskillHABEnv(gym.Env):
         self,
         *,
         seed: Optional[Union[int, list[int]]] = None,
-        options: Optional[dict] = {},
+        options: Optional[dict] = None,
     ):
-        breakpoint()
-        raw_obs, infos = self.env.reset(seed=[0, 0, 0, 0, 0, 0, 0, 0], options=options)
-        # raw_obs, infos = self.env.reset()
+        if options is None:
+            seed = self.seed
+            options = (
+                {"task_plan_idxs": self.reset_state_ids}
+                if self.use_fixed_reset_state_ids
+                else {}
+            )
+        raw_obs, infos = self.env.reset(seed=seed, options=options)
         state_dict = self.env.get_state_dict()
-        print("mjwei LOGGGGGG, state_dict['task_plan_idxs']=", state_dict['task_plan_idxs'])
-        print("mjwei LOGGGGGG, state_dict['build_config_idxs']=", state_dict['build_config_idxs'])
-        print("mjwei LOGGGGGG, state_dict['init_config_idxs']=", state_dict['init_config_idxs'])
-        breakpoint()
+        print(
+            "mjwei LOGGGGGG, state_dict['task_plan_idxs']=",
+            state_dict["task_plan_idxs"],
+        )
+        print(
+            "mjwei LOGGGGGG, state_dict['build_config_idxs']=",
+            state_dict["build_config_idxs"],
+        )
+        print(
+            "mjwei LOGGGGGG, state_dict['init_config_idxs']=",
+            state_dict["init_config_idxs"],
+        )
         extracted_obs = self._wrap_obs(raw_obs)
         if "env_idx" in options:
             env_idx = options["env_idx"]
             self._reset_metrics(env_idx)
         else:
             self._reset_metrics()
-        
         return extracted_obs, infos
 
     def step(
         self, actions: Union[Array, dict] = None, auto_reset=True
     ) -> tuple[Array, Array, Array, Array, dict]:
-        if actions is None:
-            assert self._is_start, "Actions must be provided after the first reset."
-        if self.is_start:
-            extracted_obs, infos = self.reset(
-                seed=self.seed,
-                options={"task_plan_idxs": self.reset_state_ids}  # {"episode_id": self.reset_state_ids}
-                if self.use_fixed_reset_state_ids
-                else {},
-            )
-            self._is_start = False
-            terminations = torch.zeros(
-                self.num_envs, dtype=torch.bool, device=self.device
-            )
-            truncations = torch.zeros(
-                self.num_envs, dtype=torch.bool, device=self.device
-            )
-            if self.video_cfg.save_video:
-                self.add_new_frames(infos=infos)
-            return extracted_obs, None, terminations, truncations, infos
-
         raw_obs, _reward, terminations, truncations, infos = self.env.step(actions)
         extracted_obs = self._wrap_obs(raw_obs)
         step_reward = self._calc_step_reward(_reward, infos)
@@ -351,7 +388,6 @@ class ManiskillHABEnv(gym.Env):
         if dones.any() and _auto_reset:
             extracted_obs, infos = self._handle_auto_reset(dones, extracted_obs, infos)
         return extracted_obs, step_reward, terminations, truncations, infos
-
 
     def chunk_step(self, chunk_actions):
         # chunk_actions: [num_envs, chunk_step, action_dim]

@@ -6,13 +6,11 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, Optional, Union
-
-import wandb as wb
-from omegaconf import OmegaConf
+from typing import Callable, Optional, Union
 
 import numpy as np
-
+import wandb as wb
+from omegaconf import OmegaConf
 
 color2num = dict(
     gray=30,
@@ -54,10 +52,10 @@ class LoggerConfig:
     tensorboard: bool = False
     wandb: bool = False
     project_name: Optional[str] = None
-    wandb_cfg: Dict = field(default_factory=dict)
+    wandb_cfg: dict = field(default_factory=dict)
 
-    exp_cfg: Dict = field(default_factory=dict)
-    best_stats_cfg: Dict = field(default_factory=dict)
+    exp_cfg: dict = field(default_factory=dict)
+    best_stats_cfg: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.exp_path = Path(self.workspace) / self.exp_name
@@ -147,7 +145,7 @@ class Logger:
 
             self.tb_writer = SummaryWriter(log_dir=self.log_path)
 
-    def _save_config(self, config: Union[Dict, OmegaConf], verbose=2):
+    def _save_config(self, config: Union[dict, OmegaConf], verbose=2):
         if type(config) == type(OmegaConf.create()):
             config = OmegaConf.to_container(config)
         if self.wandb:
@@ -226,9 +224,9 @@ class Logger:
             )
 
     def log(self, step, local_only=False):
-        assert (
-            step >= self.last_log_step
-        ), f"logged at step {step} but previously logged at step {self.last_log_step}"
+        assert step >= self.last_log_step, (
+            f"logged at step {step} but previously logged at step {self.last_log_step}"
+        )
         self.last_log_step = step
 
         for tag in self.data.keys():

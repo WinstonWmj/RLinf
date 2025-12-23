@@ -1,14 +1,16 @@
-simulator_type: maniskillhab
-auto_reset: ${algorithm.auto_reset}
-ignore_terminations: ${algorithm.ignore_terminations}
-use_rel_reward: False
+simulator_type: maniskill
+
+total_num_envs: null
+
+auto_reset: False
+ignore_terminations: False
+use_rel_reward: True
+reward_mode: raw
 seed: 0
-num_group: ${algorithm.num_group_envs}
-group_size: ${algorithm.group_size}
-use_fixed_reset_state_ids: ${algorithm.use_fixed_reset_state_ids}
-max_episode_steps: 100
-num_envs: ${multiply:${algorithm.group_size}, ${algorithm.num_group_envs}}
-only_eval: False
+group_size: 1
+use_fixed_reset_state_ids: False
+max_steps_per_rollout_epoch: 50
+max_episode_steps: 50 # max episode steps for truncation
 
 video_cfg:
   save_video: True
@@ -38,7 +40,6 @@ controller_config:
 
 init_params:
   id: "PickSubtaskTrain-v0"
-  max_episode_steps: ${env.train.max_episode_steps}
   obs_mode: "rgbd"  # can be replace by `rgb+depth`, `rgb+depth+segmentation` (or any combination of `rgb`, `depth`, `segmentation`). Besides, `rgbd` is a short hand for `rgb+depth`
   use_depth_only: True
   reward_mode: "normalized_dense"
@@ -47,7 +48,6 @@ init_params:
   render_mode: "all"  # ('human', 'rgb_array', 'sensors', 'all')  https://maniskill.readthedocs.io/en/latest/api/mani_skill/envs/sapien_env/index.html#mani_skill.envs.sapien_env.BaseEnv.SUPPORTED_RENDER_MODES
   shader_dir: "minimal"  # options: minimal, default, ... https://maniskill.readthedocs.io/en/latest/user_guide/concepts/sensors.html#shaders-and-textures
   robot_uids: "fetch"
-  num_envs: ${multiply:${algorithm.group_size}, ${algorithm.num_group_envs}}
   sim_backend: "gpu"
   env_kwargs:
     robot_force_mult: 0.001

@@ -1,8 +1,12 @@
-from gymnasium import spaces
-
 import torch
 import torch.nn as nn
-from rlinf.models.embodiment.model_utils import gaussian_logprob, get_out_shape, squash, weight_init
+
+from rlinf.models.embodiment.model_utils import (
+    gaussian_logprob,
+    get_out_shape,
+    squash,
+    weight_init,
+)
 
 
 class Flatten(nn.Module):
@@ -130,15 +134,18 @@ class Actor(nn.Module):
             log_pi = None
 
         mu, pi, log_pi = squash(mu, pi, log_pi)
-        return mu, pi, log_pi, log_std  # greedy_action, action, logprob, log_std(to get entropy)
+        return (
+            mu,
+            pi,
+            log_pi,
+            log_std,
+        )  # greedy_action, action, logprob, log_std(to get entropy)
 
 
 class CNNPPPolicy(nn.Module):
-    def __init__(
-        self, obs_dim, action_dim, num_action_chunks, add_value_head=False
-    ):
+    def __init__(self, obs_dim, action_dim, num_action_chunks, add_value_head=False):
         super().__init__()
-        actor_hidden_dims = ([256, 256, 256])
+        actor_hidden_dims = [256, 256, 256]
         encoder_pixels_feature_dim = 50
         encoder_state_feature_dim = 50
         cnn_features = [32, 64, 128, 256]
@@ -150,9 +157,9 @@ class CNNPPPolicy(nn.Module):
         self.obs_dim = 42
         self.action_dim = action_dim
         self.num_action_chunks = num_action_chunks
-        
+
         pixels_obs_space = {
-            "fetch_head_depth": (3, 128, 128), 
+            "fetch_head_depth": (3, 128, 128),
             "fetch_hand_depth": (3, 128, 128),
         }
 
@@ -194,7 +201,7 @@ class CNNPPPolicy(nn.Module):
             log_std_min=actor_log_std_min,
             log_std_max=actor_log_std_max,
         )
-    
+
     def predict_action_batch(
         self, env_obs, calulate_logprobs=True, calulate_values=True, **kwargs
     ):
@@ -202,12 +209,12 @@ class CNNPPPolicy(nn.Module):
         precision = next(self.parameters()).dtype
         pixel_obs = {
             "fetch_head_depth": env_obs["images"].to(device=device, dtype=precision),
-            "fetch_hand_depth": env_obs["wrist_images"].squeeze(1).to(device=device, dtype=precision),
+            "fetch_hand_depth": env_obs["wrist_images"]
+            .squeeze(1)
+            .to(device=device, dtype=precision),
         }
         state_obs = env_obs["states"].to(device=device, dtype=precision)
-        greedy_action, action, logprob, _ = self.actor(
-            pixel_obs, state_obs
-        )
+        greedy_action, action, logprob, _ = self.actor(pixel_obs, state_obs)
         chunk_actions = (
             action.reshape(-1, self.num_action_chunks, self.action_dim).cpu().numpy()
         )
@@ -218,14 +225,14 @@ class CNNPPPolicy(nn.Module):
             "images": env_obs["images"],
             "wrist_images": env_obs["wrist_images"],
             "state": env_obs["states"],
-            "action": action
+            "action": action,
         }
         result = {
             "prev_logprobs": chunk_logprobs,
             "forward_inputs": forward_inputs,
         }
         return chunk_actions, result
-    
+
     def forward(
         self,
         data,
@@ -238,12 +245,12 @@ class CNNPPPolicy(nn.Module):
         precision = next(self.parameters()).dtype
         pixel_obs = {
             "fetch_head_depth": data["images"].to(device=device, dtype=precision),
-            "fetch_hand_depth": data["wrist_images"].squeeze(1).to(device=device, dtype=precision),
+            "fetch_hand_depth": data["wrist_images"]
+            .squeeze(1)
+            .to(device=device, dtype=precision),
         }
         state_obs = data["state"].to(device=device, dtype=precision)
-        _, _, logprob, _ = self.actor(
-            pixel_obs, state_obs
-        )
+        _, _, logprob, _ = self.actor(pixel_obs, state_obs)
         ret_dict = {}
         if compute_logprobs:
             ret_dict["logprobs"] = logprob.to(dtype=torch.float32)

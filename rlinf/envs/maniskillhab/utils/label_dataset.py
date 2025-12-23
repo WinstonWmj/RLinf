@@ -1,14 +1,13 @@
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
-
 from mshab.utils.array import to_numpy
 
 
 def get_episode_label_and_events(
     task_cfgs, ep_success, ep_infos
-) -> Tuple[
-    str, List[str], List[Tuple[Union[List[int], int], str, Optional[List[float]]]]
+) -> tuple[
+    str, list[str], list[tuple[Union[list[int], int], str, Optional[list[float]]]]
 ]:
     ep_success = to_numpy(ep_success)
     ep_infos = to_numpy(ep_infos)

@@ -1,9 +1,9 @@
 import copy
 from dataclasses import MISSING, field, fields, is_dataclass
-from typing import Any, Dict
+from typing import Any
 
 
-def _recursive_asdict_dataclass(data: Any) -> Dict[str, Any]:
+def _recursive_asdict_dataclass(data: Any) -> dict[str, Any]:
     def get_value(field):
         if field.default_factory is not MISSING:
             return field.default_factory()

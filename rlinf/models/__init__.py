@@ -174,8 +174,11 @@ def get_model(cfg: DictConfig, override_config_kwargs=None):
 
         # === load proprio_projector ===
         import glob
-        proprio_ckpt_files = glob.glob(os.path.join(model_path, "proprio_projector--*.pt"))
-        proprio_ckpt_path = proprio_ckpt_files[0] if proprio_ckpt_files else ''
+
+        proprio_ckpt_files = glob.glob(
+            os.path.join(model_path, "proprio_projector--*.pt")
+        )
+        proprio_ckpt_path = proprio_ckpt_files[0] if proprio_ckpt_files else ""
         if cfg.use_proprio and os.path.isfile(proprio_ckpt_path):
             print("mjwei LOGGGGGG, proprio_ckpt_path=", proprio_ckpt_path)
             proprio_state = torch.load(proprio_ckpt_path, map_location="cpu")
@@ -183,10 +186,10 @@ def get_model(cfg: DictConfig, override_config_kwargs=None):
             # 1) 如果是 DataParallel/DDP 保存出来的，会有 "module." 前缀
             if any(k.startswith("module.") for k in proprio_state.keys()):
                 proprio_state = {
-                    k[len("module."):] if k.startswith("module.") else k: v
+                    k[len("module.") :] if k.startswith("module.") else k: v
                     for k, v in proprio_state.items()
                 }
-                
+
             # If you are sure that keys are exactly matching, you can set strict=True. To be safe, use strict=False and print the missing/unexpected keys.
             missing, unexpected = model.proprio_projector.load_state_dict(
                 proprio_state, strict=False
@@ -195,7 +198,9 @@ def get_model(cfg: DictConfig, override_config_kwargs=None):
             print(f"  missing keys: {missing}")
             print(f"  unexpected keys: {unexpected}")
         else:
-            print(f"[RLinf] No proprio projector checkpoint found at {proprio_ckpt_path}")
+            print(
+                f"[RLinf] No proprio projector checkpoint found at {proprio_ckpt_path}"
+            )
 
         model.vision_backbone.set_num_images_in_input(cfg.get("num_images_in_input", 1))
         model.to(torch_dtype)

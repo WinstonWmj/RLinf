@@ -1,9 +1,7 @@
 import hydra
 import torch
-import numpy as np
-from tqdm import tqdm
 
-from rlinf.models import get_model, get_vla_model_config_and_processor
+from rlinf.models import get_model
 
 
 @hydra.main(
@@ -15,7 +13,7 @@ def main(cfg) -> None:
     #     cfg.actor
     # )
     # model.setup_config_and_processor(model_config, cfg, input_processor)
-    
+
     _train_sampling_params = {
         "temperature": cfg.algorithm.sampling_params["temperature_train"],
         "top_k": cfg.algorithm.sampling_params["top_k"],
@@ -23,11 +21,9 @@ def main(cfg) -> None:
         "max_new_tokens": cfg.algorithm.length_params["max_new_token"],
         "use_cache": True,
     }
-    kwargs = (
-        _train_sampling_params
-    )
+    kwargs = _train_sampling_params
     kwargs["do_sample"] = cfg.actor.model.get("do_sample", True)
-    
+
     env_obs = torch.load("/mnt/mnt/public_zgc/home/mjwei/repo/RLinf/extracted_obs.pt")
     with torch.no_grad():
         actions, result = model.predict_action_batch(
@@ -244,7 +240,7 @@ def main(cfg) -> None:
     # }
 
     # return chunk_actions, result
-    
+
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 import h5py
-import numpy as np
 import imageio
+import numpy as np
 
 h5_path = "/mnt/mnt/public_zgc/datasets/arth-shukla/MS-HAB-SetTable/open/fridge.h5"
 # h5_path = "/mnt/mnt/public_zgc/datasets/arth-shukla/MS-HAB-PrepareGroceries/pick/002_master_chef_can.h5"
@@ -20,13 +20,15 @@ with h5py.File(h5_path, "r") as f:
     print("This is a group. Subkeys:", list(traj.keys()))
     print(traj["actions"].shape)
     print(list(traj["obs"].keys()))
-    print(type(traj["obs"]["sensor_data"]["fetch_hand"]["rgb"]))  # <class 'h5py._hl.dataset.Dataset'>
+    print(
+        type(traj["obs"]["sensor_data"]["fetch_hand"]["rgb"])
+    )  # <class 'h5py._hl.dataset.Dataset'>
     print(traj["obs"]["sensor_data"]["fetch_hand"]["rgb"].shape)  # (201, 128, 128, 3)
-    
+
     # 读取图片数据并保存为 mp4
     rgb_data = traj["obs"]["sensor_data"]["fetch_hand"]["rgb"]
     print(f"正在读取 {rgb_data.shape[0]} 帧图片...")
-    
+
     # 确保数据类型为 uint8，值范围在 0-255
     frames = np.array(rgb_data)
     if frames.dtype != np.uint8:
@@ -35,11 +37,11 @@ with h5py.File(h5_path, "r") as f:
             frames = (frames * 255).astype(np.uint8)
         else:
             frames = frames.astype(np.uint8)
-    
+
     # 保存为 mp4 视频
     output_path = "output_video.mp4"
     print(f"正在保存视频到 {output_path}...")
-    imageio.mimwrite(output_path, frames, fps=30, codec='libx264', quality=8)
+    imageio.mimwrite(output_path, frames, fps=30, codec="libx264", quality=8)
     print(f"视频已保存到 {output_path}")
     print(list(traj["obs"]["extra"].keys()))
     print(list(traj["obs"]["sensor_param"].keys()))
