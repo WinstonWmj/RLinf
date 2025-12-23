@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 from typing import Optional, Union
 
 import numpy as np

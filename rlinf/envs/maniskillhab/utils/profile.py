@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import os
 import time
 from contextlib import contextmanager
@@ -8,7 +12,7 @@ import torch
 
 def flatten_dict_keys(d: dict, prefix=""):
     """Flatten a dict by expanding its keys recursively."""
-    out = dict()
+    out = {}
     for k, v in d.items():
         if isinstance(v, dict):
             out.update(flatten_dict_keys(v, prefix + k + "/"))
@@ -23,7 +27,7 @@ class Profiler:
     """
 
     def __init__(self) -> None:
-        self.stats = dict()
+        self.stats = {}
 
     @contextmanager
     def profile(self, name: str, total_steps: int, num_envs: int):
@@ -39,12 +43,12 @@ class Profiler:
         # fps: frames per second
         # psps: parallel steps per second (number of env.step calls per second)
         # NOTE (arth): per second stats include other code, e.g. sampling actions
-        self.stats[name] = dict(
-            dt=dt,
-            fps=total_steps * num_envs / dt,
-            psps=total_steps / dt,
-            total_steps=total_steps,
-            cpu_mem_use=cpu_mem_use,
-            gpu_mem_use=gpu_mem_use[1] - gpu_mem_use[0],
-        )
+        self.stats[name] = {
+            "dt": dt,
+            "fps": total_steps * num_envs / dt,
+            "psps": total_steps / dt,
+            "total_steps": total_steps,
+            "cpu_mem_use": cpu_mem_use,
+            "gpu_mem_use": gpu_mem_use[1] - gpu_mem_use[0],
+        }
         torch.cuda.synchronize()

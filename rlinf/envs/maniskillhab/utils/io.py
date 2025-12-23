@@ -1,4 +1,6 @@
-# modified from https://stackoverflow.com/a/42711281
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
 
 import json
 import re

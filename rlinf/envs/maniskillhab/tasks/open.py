@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 from typing import Any
 
 import torch
@@ -27,11 +31,11 @@ class OpenSubtaskTrainEnv(SubtaskTrainEnv):
     open_cfg = OpenSubtaskConfig(
         horizon=200,
         ee_rest_thresh=0.05,
-        joint_qpos_open_thresh_frac=dict(
-            default=0.9,
-            fridge=0.75,
-            kitchen_counter=0.9,
-        ),
+        joint_qpos_open_thresh_frac={
+            "default": 0.9,
+            "fridge": 0.75,
+            "kitchen_counter": 0.9,
+        },
         robot_cumulative_force_limit=10_000,
     )
 

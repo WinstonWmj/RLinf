@@ -1,9 +1,15 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 from pathlib import Path
 
 from omegaconf import OmegaConf
 
 
-def parse_cfg(cfg_path: str = None, default_cfg_path: str = None) -> OmegaConf:
+def parse_cfg(
+    cfg_path: str | None = None, default_cfg_path: str | None = None
+) -> OmegaConf:
     if default_cfg_path is not None:
         base = OmegaConf.load(default_cfg_path)
 

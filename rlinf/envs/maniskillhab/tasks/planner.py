@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -232,7 +236,7 @@ class PlanData:
     plans: list[TaskPlan]
 
 
-def plan_data_from_file(config_path: str = None) -> PlanData:
+def plan_data_from_file(config_path: str | None = None) -> PlanData:
     config_path: Path = Path(config_path)
     assert config_path.exists(), f"Path {config_path} not found"
 

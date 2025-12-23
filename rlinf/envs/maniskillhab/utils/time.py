@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import time
 from collections import defaultdict
 
@@ -26,9 +30,9 @@ class NonOverlappingTimeProfiler(object):
 
     def get_time_logs(self, global_step):
         time_stat = self.read()
-        time_logs = dict(
-            SPS=global_step / time_stat.pop("total"),
-        )
+        time_logs = {
+            "SPS": global_step / time_stat.pop("total"),
+        }
         for k, v in time_stat.items():
             if k.endswith("ratio"):
                 time_logs[k] = v

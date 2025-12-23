@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import argparse
 import multiprocessing as mp
 import os
@@ -97,31 +101,31 @@ def gen_pick_spawn_data(
     build_config_names_to_idxs = scene_builder.build_config_names_to_idxs
     init_config_names_to_idxs = scene_builder.init_config_names_to_idxs
 
-    subtask_uid_to_spawn_data = dict()
+    subtask_uid_to_spawn_data = {}
 
     env.reset(
         seed=args.seed + proc_num,
-        options=dict(
-            reconfigure=True,
-            build_config_idxs=build_config_names_to_idxs[build_config_name],
-        ),
+        options={
+            "reconfigure": True,
+            "build_config_idxs": build_config_names_to_idxs[build_config_name],
+        },
     )
 
     agent_bodies = []
     for link in env.agent.robot.links:
         agent_bodies += link._bodies
     agent_bodies = set(agent_bodies)
-    num_agent_contacts = lambda contacts: len(
-        [c for c in contacts if any([b in agent_bodies for b in c.bodies])]
-    )
+
+    def num_agent_contacts(contacts):
+        return len([c for c in contacts if any(b in agent_bodies for b in c.bodies)])
 
     for tp in tqdm(task_plans):
         env.reset(
             seed=args.seed + proc_num,
-            options=dict(
-                reconfigure=False,
-                init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-            ),
+            options={
+                "reconfigure": False,
+                "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+            },
         )
 
         assert len(tp.subtasks) == 1 and isinstance(tp.subtasks[0], PickSubtask)
@@ -152,10 +156,10 @@ def gen_pick_spawn_data(
         while len(spawn_pos) < args.num_spawns_per_task_plan:
             env.reset(
                 seed=args.seed + proc_num,
-                options=dict(
-                    reconfigure=False,
-                    init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-                ),
+                options={
+                    "reconfigure": False,
+                    "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+                },
             )
 
             if args.task == "set_table":
@@ -268,17 +272,17 @@ def gen_pick_spawn_data(
                     spawn_obj_raw_pose.append(subtask_obj.pose.raw_pose[0])
 
         if args.task == "set_table":
-            subtask_uid_to_spawn_data[subtask.uid] = dict(
-                robot_pos=torch.stack(spawn_pos),
-                robot_qpos=torch.stack(spawn_qpos),
-                articulation_qpos=torch.stack(spawn_articulation_qpos),
-                obj_raw_pose=torch.stack(spawn_obj_raw_pose),
-            )
+            subtask_uid_to_spawn_data[subtask.uid] = {
+                "robot_pos": torch.stack(spawn_pos),
+                "robot_qpos": torch.stack(spawn_qpos),
+                "articulation_qpos": torch.stack(spawn_articulation_qpos),
+                "obj_raw_pose": torch.stack(spawn_obj_raw_pose),
+            }
         else:
-            subtask_uid_to_spawn_data[subtask.uid] = dict(
-                robot_pos=torch.stack(spawn_pos),
-                robot_qpos=torch.stack(spawn_qpos),
-            )
+            subtask_uid_to_spawn_data[subtask.uid] = {
+                "robot_pos": torch.stack(spawn_pos),
+                "robot_qpos": torch.stack(spawn_qpos),
+            }
 
     return subtask_uid_to_spawn_data
 
@@ -296,7 +300,7 @@ def gen_place_spawn_data(
     build_config_names_to_idxs = scene_builder.build_config_names_to_idxs
     init_config_names_to_idxs = scene_builder.init_config_names_to_idxs
 
-    grasping_spawns = dict()
+    grasping_spawns = {}
     if args.task == "set_table":
         task_obj_names = [
             "013_apple",
@@ -325,30 +329,30 @@ def gen_place_spawn_data(
         ) as spawns_fp:
             grasping_spawns[obj_name] = torch.load(spawns_fp)
 
-    subtask_uid_to_spawn_data = dict()
+    subtask_uid_to_spawn_data = {}
     env.reset(
         seed=args.seed + proc_num,
-        options=dict(
-            reconfigure=True,
-            build_config_idxs=build_config_names_to_idxs[build_config_name],
-        ),
+        options={
+            "reconfigure": True,
+            "build_config_idxs": build_config_names_to_idxs[build_config_name],
+        },
     )
 
     agent_bodies = []
     for link in env.agent.robot.links:
         agent_bodies += link._bodies
     agent_bodies = set(agent_bodies)
-    num_agent_contacts = lambda contacts: len(
-        [c for c in contacts if any([b in agent_bodies for b in c.bodies])]
-    )
+
+    def num_agent_contacts(contacts):
+        return len([c for c in contacts if any(b in agent_bodies for b in c.bodies)])
 
     for tp in tqdm(task_plans):
         env.reset(
             seed=args.seed + proc_num,
-            options=dict(
-                reconfigure=False,
-                init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-            ),
+            options={
+                "reconfigure": False,
+                "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+            },
         )
 
         assert len(tp.subtasks) == 1 and isinstance(tp.subtasks[0], PlaceSubtask)
@@ -358,9 +362,11 @@ def gen_place_spawn_data(
         obj_name = subtask.obj_id.split("-")[0]
 
         subtask_obj_bodies = set(subtask_obj._bodies)
-        num_subtask_obj_contacts = lambda contacts: len(
-            [c for c in contacts if any([b in subtask_obj_bodies for b in c.bodies])]
-        )
+
+        def num_subtask_obj_contacts(contacts):
+            return len(
+                [c for c in contacts if any(b in subtask_obj_bodies for b in c.bodies)]
+            )
 
         navigable_positions = torch.tensor(
             scene_builder.navigable_positions[0].vertices
@@ -383,10 +389,10 @@ def gen_place_spawn_data(
 
             env.reset(
                 seed=args.seed + proc_num,
-                options=dict(
-                    reconfigure=False,
-                    init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-                ),
+                options={
+                    "reconfigure": False,
+                    "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+                },
             )
 
             subtask_goal_pose = Pose.create_from_pq(q=GOAL_POSE_Q, p=subtask.goal_pos)
@@ -463,10 +469,10 @@ def gen_place_spawn_data(
 
             env.reset(
                 seed=args.seed + proc_num,
-                options=dict(
-                    reconfigure=False,
-                    init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-                ),
+                options={
+                    "reconfigure": False,
+                    "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+                },
             )
 
             env.agent.robot.set_pose(sapien.Pose(p=[99999, 99999, 99999]))
@@ -487,11 +493,11 @@ def gen_place_spawn_data(
                 spawn_qpos.append(robot_qpos)
                 spawn_obj_raw_pose_wrt_tcp.append(obj_raw_pose_wrt_tcp[0])
 
-        subtask_uid_to_spawn_data[subtask.uid] = dict(
-            robot_pos=torch.stack(spawn_pos),
-            robot_qpos=torch.stack(spawn_qpos),
-            obj_raw_pose_wrt_tcp=torch.stack(spawn_obj_raw_pose_wrt_tcp),
-        )
+        subtask_uid_to_spawn_data[subtask.uid] = {
+            "robot_pos": torch.stack(spawn_pos),
+            "robot_qpos": torch.stack(spawn_qpos),
+            "obj_raw_pose_wrt_tcp": torch.stack(spawn_obj_raw_pose_wrt_tcp),
+        }
 
     return subtask_uid_to_spawn_data
 
@@ -509,31 +515,31 @@ def gen_open_spawn_data(
     build_config_names_to_idxs = scene_builder.build_config_names_to_idxs
     init_config_names_to_idxs = scene_builder.init_config_names_to_idxs
 
-    subtask_uid_to_spawn_data = dict()
+    subtask_uid_to_spawn_data = {}
 
     env.reset(
         seed=args.seed + proc_num,
-        options=dict(
-            reconfigure=True,
-            build_config_idxs=build_config_names_to_idxs[build_config_name],
-        ),
+        options={
+            "reconfigure": True,
+            "build_config_idxs": build_config_names_to_idxs[build_config_name],
+        },
     )
 
     agent_bodies = []
     for link in env.agent.robot.links:
         agent_bodies += link._bodies
     agent_bodies = set(agent_bodies)
-    num_agent_contacts = lambda contacts: len(
-        [c for c in contacts if any([b in agent_bodies for b in c.bodies])]
-    )
+
+    def num_agent_contacts(contacts):
+        return len([c for c in contacts if any(b in agent_bodies for b in c.bodies)])
 
     for tp in tqdm(task_plans):
         env.reset(
             seed=args.seed + proc_num,
-            options=dict(
-                reconfigure=False,
-                init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-            ),
+            options={
+                "reconfigure": False,
+                "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+            },
         )
 
         assert len(tp.subtasks) == 1 and isinstance(tp.subtasks[0], OpenSubtask)
@@ -581,10 +587,10 @@ def gen_open_spawn_data(
         while len(spawn_pos) < args.num_spawns_per_task_plan:
             env.reset(
                 seed=args.seed + proc_num,
-                options=dict(
-                    reconfigure=False,
-                    init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-                ),
+                options={
+                    "reconfigure": False,
+                    "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+                },
             )
 
             positions_wrt_centers = navigable_positions - obj_center
@@ -657,10 +663,10 @@ def gen_open_spawn_data(
                 spawn_pos.append(env.agent.robot.pose.p[0])
                 spawn_qpos.append(env.agent.robot.qpos[0])
 
-        subtask_uid_to_spawn_data[subtask.uid] = dict(
-            robot_pos=torch.stack(spawn_pos),
-            robot_qpos=torch.stack(spawn_qpos),
-        )
+        subtask_uid_to_spawn_data[subtask.uid] = {
+            "robot_pos": torch.stack(spawn_pos),
+            "robot_qpos": torch.stack(spawn_qpos),
+        }
 
     return subtask_uid_to_spawn_data
 
@@ -678,31 +684,31 @@ def gen_close_spawn_data(
     build_config_names_to_idxs = scene_builder.build_config_names_to_idxs
     init_config_names_to_idxs = scene_builder.init_config_names_to_idxs
 
-    subtask_uid_to_spawn_data = dict()
+    subtask_uid_to_spawn_data = {}
 
     env.reset(
         seed=args.seed + proc_num,
-        options=dict(
-            reconfigure=True,
-            build_config_idxs=build_config_names_to_idxs[build_config_name],
-        ),
+        options={
+            "reconfigure": True,
+            "build_config_idxs": build_config_names_to_idxs[build_config_name],
+        },
     )
 
     agent_bodies = []
     for link in env.agent.robot.links:
         agent_bodies += link._bodies
     agent_bodies = set(agent_bodies)
-    num_agent_contacts = lambda contacts: len(
-        [c for c in contacts if any([b in agent_bodies for b in c.bodies])]
-    )
+
+    def num_agent_contacts(contacts):
+        return len([c for c in contacts if any(b in agent_bodies for b in c.bodies)])
 
     for tp in tqdm(task_plans):
         env.reset(
             seed=args.seed + proc_num,
-            options=dict(
-                reconfigure=False,
-                init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-            ),
+            options={
+                "reconfigure": False,
+                "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+            },
         )
 
         assert len(tp.subtasks) == 1 and isinstance(tp.subtasks[0], CloseSubtask)
@@ -754,10 +760,10 @@ def gen_close_spawn_data(
         while len(spawn_pos) < args.num_spawns_per_task_plan:
             env.reset(
                 seed=args.seed + proc_num,
-                options=dict(
-                    reconfigure=False,
-                    init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-                ),
+                options={
+                    "reconfigure": False,
+                    "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+                },
             )
 
             robot_init_pos = env.agent.robot.pose.p
@@ -854,11 +860,11 @@ def gen_close_spawn_data(
                 spawn_qpos.append(env.agent.robot.qpos[0])
                 spawn_articulation_qpos.append(subtask_articulation.qpos[0])
 
-        subtask_uid_to_spawn_data[subtask.uid] = dict(
-            robot_pos=torch.stack(spawn_pos),
-            robot_qpos=torch.stack(spawn_qpos),
-            articulation_qpos=torch.stack(spawn_articulation_qpos),
-        )
+        subtask_uid_to_spawn_data[subtask.uid] = {
+            "robot_pos": torch.stack(spawn_pos),
+            "robot_qpos": torch.stack(spawn_qpos),
+            "articulation_qpos": torch.stack(spawn_articulation_qpos),
+        }
 
     return subtask_uid_to_spawn_data
 
@@ -876,7 +882,7 @@ def gen_navigate_spawn_data(
     build_config_names_to_idxs = scene_builder.build_config_names_to_idxs
     init_config_names_to_idxs = scene_builder.init_config_names_to_idxs
 
-    grasping_spawns = dict()
+    grasping_spawns = {}
     if args.task == "set_table":
         task_obj_names = [
             "013_apple",
@@ -905,30 +911,30 @@ def gen_navigate_spawn_data(
         ) as spawns_fp:
             grasping_spawns[obj_name] = torch.load(spawns_fp)
 
-    subtask_uid_to_spawn_data = dict()
+    subtask_uid_to_spawn_data = {}
     env.reset(
         seed=args.seed + proc_num,
-        options=dict(
-            reconfigure=True,
-            build_config_idxs=build_config_names_to_idxs[build_config_name],
-        ),
+        options={
+            "reconfigure": True,
+            "build_config_idxs": build_config_names_to_idxs[build_config_name],
+        },
     )
 
     agent_bodies = []
     for link in env.agent.robot.links:
         agent_bodies += link._bodies
     agent_bodies = set(agent_bodies)
-    num_agent_contacts = lambda contacts: len(
-        [c for c in contacts if any([b in agent_bodies for b in c.bodies])]
-    )
+
+    def num_agent_contacts(contacts):
+        return len([c for c in contacts if any(b in agent_bodies for b in c.bodies)])
 
     for tp in tqdm(task_plans):
         env.reset(
             seed=args.seed + proc_num,
-            options=dict(
-                reconfigure=False,
-                init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-            ),
+            options={
+                "reconfigure": False,
+                "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+            },
         )
 
         assert len(tp.subtasks) == 1 and isinstance(tp.subtasks[0], NavigateSubtask)
@@ -940,13 +946,15 @@ def gen_navigate_spawn_data(
             obj_name = subtask.obj_id.split("-")[0]
 
             subtask_obj_bodies = set(subtask_obj._bodies)
-            num_subtask_obj_contacts = lambda contacts: len(
-                [
-                    c
-                    for c in contacts
-                    if any([b in subtask_obj_bodies for b in c.bodies])
-                ]
-            )
+
+            def num_subtask_obj_contacts(contacts):
+                return len(
+                    [
+                        c
+                        for c in contacts
+                        if any(b in subtask_obj_bodies for b in c.bodies)
+                    ]
+                )
 
         navigable_positions = torch.tensor(
             scene_builder.navigable_positions[0].vertices
@@ -997,10 +1005,10 @@ def gen_navigate_spawn_data(
 
             env.reset(
                 seed=args.seed + proc_num,
-                options=dict(
-                    reconfigure=False,
-                    init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-                ),
+                options={
+                    "reconfigure": False,
+                    "init_config_idxs": init_config_names_to_idxs[tp.init_config_name],
+                },
             )
 
             if args.task == "set_table":
@@ -1123,10 +1131,12 @@ def gen_navigate_spawn_data(
             if subtask_obj is not None and robot_spawn_success:
                 env.reset(
                     seed=args.seed + proc_num,
-                    options=dict(
-                        reconfigure=False,
-                        init_config_idxs=init_config_names_to_idxs[tp.init_config_name],
-                    ),
+                    options={
+                        "reconfigure": False,
+                        "init_config_idxs": init_config_names_to_idxs[
+                            tp.init_config_name
+                        ],
+                    },
                 )
 
                 env.agent.robot.set_pose(sapien.Pose(p=[99999, 99999, 99999]))
@@ -1153,18 +1163,18 @@ def gen_navigate_spawn_data(
                     spawn_articulation_qpos.append(new_subtask_articulation_qpos[0])
 
         if args.task == "set_table":
-            subtask_uid_to_spawn_data[subtask.uid] = dict(
-                robot_pos=torch.stack(spawn_pos),
-                robot_qpos=torch.stack(spawn_qpos),
-                obj_raw_pose_wrt_tcp=torch.stack(spawn_obj_raw_pose_wrt_tcp),
-                articulation_qpos=torch.stack(spawn_articulation_qpos),
-            )
+            subtask_uid_to_spawn_data[subtask.uid] = {
+                "robot_pos": torch.stack(spawn_pos),
+                "robot_qpos": torch.stack(spawn_qpos),
+                "obj_raw_pose_wrt_tcp": torch.stack(spawn_obj_raw_pose_wrt_tcp),
+                "articulation_qpos": torch.stack(spawn_articulation_qpos),
+            }
         else:
-            subtask_uid_to_spawn_data[subtask.uid] = dict(
-                robot_pos=torch.stack(spawn_pos),
-                robot_qpos=torch.stack(spawn_qpos),
-                obj_raw_pose_wrt_tcp=torch.stack(spawn_obj_raw_pose_wrt_tcp),
-            )
+            subtask_uid_to_spawn_data[subtask.uid] = {
+                "robot_pos": torch.stack(spawn_pos),
+                "robot_qpos": torch.stack(spawn_qpos),
+                "obj_raw_pose_wrt_tcp": torch.stack(spawn_obj_raw_pose_wrt_tcp),
+            }
 
     return subtask_uid_to_spawn_data
 
@@ -1191,13 +1201,13 @@ def gen_spawn_data(
         task_plans = [
             tp for tp in plan_data.plans if tp.build_config_name == build_config_name
         ]
-        return dict(
-            pick=gen_pick_spawn_data,
-            place=gen_place_spawn_data,
-            open=gen_open_spawn_data,
-            close=gen_close_spawn_data,
-            navigate=gen_navigate_spawn_data,
-        )[args.subtask](proc_num, args, scene_builder_cls, task_plans)
+        return {
+            "pick": gen_pick_spawn_data,
+            "place": gen_place_spawn_data,
+            "open": gen_open_spawn_data,
+            "close": gen_close_spawn_data,
+            "navigate": gen_navigate_spawn_data,
+        }[args.subtask](proc_num, args, scene_builder_cls, task_plans)
 
 
 def parse_args(args=None) -> GenSpawnPositionArgs:
@@ -1247,7 +1257,7 @@ def main():
     build_config_names = set()
     for tp in plan_data.plans:
         build_config_names.add(tp.build_config_name)
-    build_config_names = sorted(list(build_config_names))
+    build_config_names = sorted(build_config_names)
 
     ctx = mp.get_context("spawn")
     with ctx.Pool(processes=args.num_workers) as pool:
@@ -1264,7 +1274,7 @@ def main():
         ]
         results = [res.get() for res in procs]
 
-    subtask_uid_to_spawn_data = dict()
+    subtask_uid_to_spawn_data = {}
     for res in results:
         subtask_uid_to_spawn_data.update(res)
 

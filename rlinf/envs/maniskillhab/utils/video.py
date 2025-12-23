@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import os
 from typing import Optional
 
@@ -96,7 +100,7 @@ def append_text_to_image(
     The returned image has white text on a black background.
     Args:
         image: the image to put text
-        text: a string to display
+        lines: a string to display
     Returns:
         A new image with text inserted left to the input image
     See also:

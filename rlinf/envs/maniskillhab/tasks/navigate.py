@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal, Optional
@@ -125,7 +129,7 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
                 )
                 for bc in build_configs
             ]
-            max_map_verts = max([x.size(0) for x in floor_map_verts])
+            max_map_verts = max(x.size(0) for x in floor_map_verts)
             self.floor_map_verts = torch.full(
                 (len(build_configs), max_map_verts, 2),
                 100,
@@ -293,12 +297,12 @@ class NavigateSubtaskTrainEnv(SubtaskTrainEnv):
                     )
                 )
                 replace_goal_with_link_nav_xrange.append(
-                    dict(fridge=[0.933, 1.833], kitchen_counter=[0.3, 1.5])[
+                    {"fridge": [0.933, 1.833], "kitchen_counter": [0.3, 1.5]}[
                         subtask.articulation_config.articulation_type
                     ]
                 )
                 replace_goal_with_link_nav_yrange.append(
-                    dict(fridge=[-0.6, 0.6], kitchen_counter=[-0.6, 0.6])[
+                    {"fridge": [-0.6, 0.6], "kitchen_counter": [-0.6, 0.6]}[
                         subtask.articulation_config.articulation_type
                     ]
                 )

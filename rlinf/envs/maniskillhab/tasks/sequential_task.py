@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import copy
 from collections import defaultdict
 from typing import Any, Optional, Union
@@ -88,11 +92,11 @@ class SequentialTaskEnv(SceneManipulationEnv):
     open_cfg = OpenSubtaskConfig(
         horizon=200,
         ee_rest_thresh=0.05,
-        joint_qpos_open_thresh_frac=dict(
-            default=0.9,
-            fridge=0.75,
-            kitchen_counter=0.9,
-        ),
+        joint_qpos_open_thresh_frac={
+            "default": 0.9,
+            "fridge": 0.75,
+            "kitchen_counter": 0.9,
+        },
     )
     close_cfg = CloseSubtaskConfig(
         horizon=200,
@@ -121,16 +125,16 @@ class SequentialTaskEnv(SceneManipulationEnv):
         randomize_build_configs_per_env=True,
         add_event_tracker_info=False,
         invisible_goals_in_human_render=False,
-        task_cfgs=dict(),
+        task_cfgs={},
         **kwargs,
     ):
-        self.task_cfgs: dict[str, SubtaskConfig] = dict(
-            pick=self.pick_cfg,
-            place=self.place_cfg,
-            navigate=self.navigate_cfg,
-            open=self.open_cfg,
-            close=self.close_cfg,
-        )
+        self.task_cfgs: dict[str, SubtaskConfig] = {
+            "pick": self.pick_cfg,
+            "place": self.place_cfg,
+            "navigate": self.navigate_cfg,
+            "open": self.open_cfg,
+            "close": self.close_cfg,
+        }
 
         task_cfg_update_dict = task_cfgs
         for k, v in task_cfg_update_dict.items():
@@ -140,10 +144,8 @@ class SequentialTaskEnv(SceneManipulationEnv):
             "All parallel task plans must be the same length"
         )
         assert all(
-            [
-                all_same_type(parallel_subtasks)
-                for parallel_subtasks in zip(*[plan.subtasks for plan in task_plans])
-            ]
+            all_same_type(parallel_subtasks)
+            for parallel_subtasks in zip(*[plan.subtasks for plan in task_plans])
         ), "All parallel task plans must have same subtask types in same order"
 
         if randomize_build_configs_per_env:
@@ -157,14 +159,14 @@ class SequentialTaskEnv(SceneManipulationEnv):
         self._add_event_tracker_info = add_event_tracker_info
         self._invisible_goals_in_human_render = invisible_goals_in_human_render
         # breakpoint()
-        self.base_task_plans = dict(
-            (tuple([subtask.uid for subtask in tp.subtasks]), tp) for tp in task_plans
-        )
+        self.base_task_plans = {
+            tuple(subtask.uid for subtask in tp.subtasks): tp for tp in task_plans
+        }
         self.bc_to_task_plans: dict[str, list[TaskPlan]] = defaultdict(list)
         for tp in task_plans:
             self.bc_to_task_plans[tp.build_config_name].append(tp)
 
-        self._init_config_names = set([tp.init_config_name for tp in task_plans])
+        self._init_config_names = {tp.init_config_name for tp in task_plans}
 
         self.tp0 = task_plans[0]
 
@@ -194,7 +196,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         #   as-is. for now, we ignore the prepare_groceries case (since fridge is opened by ao_config anyways)
         #   but in the future we'll need to support a case with e.g. a modified set_table with pick from table
         if all(
-            [subtask.articulation_config is not None for subtask in parallel_subtasks]
+            subtask.articulation_config is not None for subtask in parallel_subtasks
         ):
             merged_articulation_name = f"articulation-{subtask_num}"
             merged_articulation = (
@@ -249,7 +251,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
         # NOTE (arth): see notes above regarding merged articulation config
         if all(
-            [subtask.articulation_config is not None for subtask in parallel_subtasks]
+            subtask.articulation_config is not None for subtask in parallel_subtasks
         ):
             merged_articulation_name = f"articulation-{subtask_num}"
             merged_articulation = (
@@ -492,7 +494,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
     def _create_merged_actor_from_obj_ids(
         self,
         obj_ids: list[str],
-        name: str = None,
+        name: str | None = None,
     ):
         merged_obj = Actor.create_from_entities(
             [
@@ -509,7 +511,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
     def _create_merged_actor_from_subtasks(
         self,
         parallel_subtasks: list[Union[PickSubtask, PlaceSubtask]],
-        name: str = None,
+        name: str | None = None,
     ):
         return self._create_merged_actor_from_obj_ids(
             [subtask.obj_id for subtask in parallel_subtasks], name
@@ -524,7 +526,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
     def _create_merged_articulation_from_articulation_ids(
         self,
         articulation_ids: list[str],
-        name: str = None,
+        name: str | None = None,
         merging_different_articulations: bool = False,
     ):
         scene_idx_to_physx_articulation_objs = [None for _ in range(self.num_envs)]
@@ -544,7 +546,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
     def _create_merged_articulation_from_subtasks(
         self,
         parallel_subtasks: list[Union[OpenSubtask, CloseSubtask]],
-        name: str = None,
+        name: str | None = None,
         merging_different_articulations: bool = False,
     ):
         return self._create_merged_articulation_from_articulation_ids(
@@ -555,7 +557,8 @@ class SequentialTaskEnv(SceneManipulationEnv):
 
     def _make_goal(
         self,
-        pos: Union[tuple[float, float, float], list[tuple[float, float, float]]] = None,
+        pos: Union[tuple[float, float, float], list[tuple[float, float, float]]]
+        | None = None,
         radius=0.15,
         name="goal_site",
         goal_type="sphere",
@@ -648,7 +651,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 goal = None
             self.premade_goal_list.append(goal)
 
-        self.build_config_idx_to_task_plans: dict[int, list[TaskPlan]] = dict()
+        self.build_config_idx_to_task_plans: dict[int, list[TaskPlan]] = {}
         for bc in self.bc_to_task_plans.keys():
             self.build_config_idx_to_task_plans[
                 self.scene_builder.build_config_names_to_idxs[bc]
@@ -674,7 +677,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 ).tolist()
                 if self._randomize_build_configs_per_env
                 else np.repeat(
-                    sorted(list(self.build_config_idx_to_task_plans.keys())),
+                    sorted(self.build_config_idx_to_task_plans.keys()),
                     np.ceil(self.num_envs / num_bcis),
                 )[: self.num_envs].tolist()
             ),
@@ -774,7 +777,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         )
 
         self._initialize_episode(
-            torch.arange(self.num_envs), options=dict(task_plan_idxs=task_plan_idxs)
+            torch.arange(self.num_envs), options={"task_plan_idxs": task_plan_idxs}
         )
 
         assert torch.all(
@@ -876,7 +879,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         progressive_task_success = torch.ones(
             self.num_envs, device=self.device, dtype=torch.bool
         )
-        progressive_task_checkers = dict()
+        progressive_task_checkers = {}
         for subtask_num in self.check_progressive_success_subtask_nums:
             subtask = self.task_plan[subtask_num]
             env_idx = torch.where(self.subtask_pointer > subtask_num)[0]
@@ -909,7 +912,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
         subtask_success = torch.zeros(
             self.num_envs, device=self.device, dtype=torch.bool
         )
-        success_checkers = dict()
+        success_checkers = {}
 
         currently_running_subtasks = torch.unique(
             torch.clip(self.subtask_pointer, max=len(self.task_plan) - 1)
@@ -1008,13 +1011,13 @@ class SequentialTaskEnv(SceneManipulationEnv):
             self.robot_cumulative_force[env_idx]
             < self.pick_cfg.robot_cumulative_force_limit
         )
-        subtask_checkers = dict(
-            is_grasped=is_grasped,
-            ee_rest=ee_rest,
-            robot_rest=robot_rest,
-            is_static=is_static,
-            cumulative_force_within_limit=cumulative_force_within_limit,
-        )
+        subtask_checkers = {
+            "is_grasped": is_grasped,
+            "ee_rest": ee_rest,
+            "robot_rest": robot_rest,
+            "is_static": is_static,
+            "cumulative_force_within_limit": cumulative_force_within_limit,
+        }
         if self._add_event_tracker_info:
             subtask_checkers["robot_target_pairwise_force"] = torch.norm(
                 self.scene.get_pairwise_contact_forces(self.agent.finger1_link, obj)[
@@ -1100,7 +1103,7 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 f"{self.place_cfg.goal_type=} is not yet supported"
             )
         if check_progressive_completion:
-            return obj_at_goal, dict(obj_at_goal=obj_at_goal)
+            return obj_at_goal, {"obj_at_goal": obj_at_goal}
         ee_rest = (
             torch.norm(
                 self.agent.tcp_pose.p[env_idx] - self.ee_rest_world_pose.p[env_idx],
@@ -1119,14 +1122,14 @@ class SequentialTaskEnv(SceneManipulationEnv):
             self.robot_cumulative_force[env_idx]
             < self.place_cfg.robot_cumulative_force_limit
         )
-        subtask_checkers = dict(
-            is_grasped=is_grasped,
-            obj_at_goal=obj_at_goal,
-            ee_rest=ee_rest,
-            robot_rest=robot_rest,
-            is_static=is_static,
-            cumulative_force_within_limit=cumulative_force_within_limit,
-        )
+        subtask_checkers = {
+            "is_grasped": is_grasped,
+            "obj_at_goal": obj_at_goal,
+            "ee_rest": ee_rest,
+            "robot_rest": robot_rest,
+            "is_static": is_static,
+            "cumulative_force_within_limit": cumulative_force_within_limit,
+        }
         if self._add_event_tracker_info:
             subtask_checkers["robot_target_pairwise_force"] = torch.norm(
                 self.scene.get_pairwise_contact_forces(self.agent.finger1_link, obj)[
@@ -1177,10 +1180,10 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 relative_pos_world,
             )
 
-            xrange = dict(fridge=[0.933, 1.833], kitchen_counter=[0.3, 1.5])[
+            xrange = {"fridge": [0.933, 1.833], "kitchen_counter": [0.3, 1.5]}[
                 articulation_type
             ]
-            yrange = dict(fridge=[-0.6, 0.6], kitchen_counter=[-0.6, 0.6])[
+            yrange = {"fridge": [-0.6, 0.6], "kitchen_counter": [-0.6, 0.6]}[
                 articulation_type
             ]
 
@@ -1231,13 +1234,13 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 & navigated_close
                 & is_static
                 & cumulative_force_within_limit,
-                dict(
-                    is_grasped=is_grasped,
-                    oriented_correctly=oriented_correctly,
-                    navigated_close=navigated_close,
-                    is_static=is_static,
-                    cumulative_force_within_limit=cumulative_force_within_limit,
-                ),
+                {
+                    "is_grasped": is_grasped,
+                    "oriented_correctly": oriented_correctly,
+                    "navigated_close": navigated_close,
+                    "is_static": is_static,
+                    "cumulative_force_within_limit": cumulative_force_within_limit,
+                },
             )
 
         ee_rest = (
@@ -1291,15 +1294,15 @@ class SequentialTaskEnv(SceneManipulationEnv):
                 navigate_success &= is_grasped
         return (
             navigate_success & cumulative_force_within_limit,
-            dict(
-                is_grasped=is_grasped,
-                oriented_correctly=oriented_correctly,
-                navigated_close=navigated_close,
-                ee_rest=ee_rest,
-                robot_rest=robot_rest,
-                is_static=is_static,
-                cumulative_force_within_limit=cumulative_force_within_limit,
-            ),
+            {
+                "is_grasped": is_grasped,
+                "oriented_correctly": oriented_correctly,
+                "navigated_close": navigated_close,
+                "ee_rest": ee_rest,
+                "robot_rest": robot_rest,
+                "is_static": is_static,
+                "cumulative_force_within_limit": cumulative_force_within_limit,
+            },
         )
 
     def _open_check_success(
@@ -1339,14 +1342,14 @@ class SequentialTaskEnv(SceneManipulationEnv):
             self.robot_cumulative_force[env_idx]
             < self.open_cfg.robot_cumulative_force_limit
         )
-        subtask_checkers = dict(
-            is_grasped=is_grasped,
-            articulation_open=articulation_open,
-            ee_rest=ee_rest,
-            robot_rest=robot_rest,
-            is_static=is_static,
-            cumulative_force_within_limit=cumulative_force_within_limit,
-        )
+        subtask_checkers = {
+            "is_grasped": is_grasped,
+            "articulation_open": articulation_open,
+            "ee_rest": ee_rest,
+            "robot_rest": robot_rest,
+            "is_static": is_static,
+            "cumulative_force_within_limit": cumulative_force_within_limit,
+        }
         if self._add_event_tracker_info:
             subtask_checkers["handle_active_joint_qpos"] = articulation.qpos[
                 env_idx, active_joint_idx
@@ -1413,14 +1416,14 @@ class SequentialTaskEnv(SceneManipulationEnv):
             self.robot_cumulative_force[env_idx]
             < self.close_cfg.robot_cumulative_force_limit
         )
-        subtask_checkers = dict(
-            is_grasped=is_grasped,
-            articulation_closed=articulation_closed,
-            ee_rest=ee_rest,
-            robot_rest=robot_rest,
-            is_static=is_static,
-            cumulative_force_within_limit=cumulative_force_within_limit,
-        )
+        subtask_checkers = {
+            "is_grasped": is_grasped,
+            "articulation_closed": articulation_closed,
+            "ee_rest": ee_rest,
+            "robot_rest": robot_rest,
+            "is_static": is_static,
+            "cumulative_force_within_limit": cumulative_force_within_limit,
+        }
         if self._add_event_tracker_info:
             subtask_checkers["handle_active_joint_qpos"] = articulation.qpos[
                 env_idx, active_joint_idx
@@ -1518,12 +1521,12 @@ class SequentialTaskEnv(SceneManipulationEnv):
         #       - is_grasped    :   part of success criteria (or set default)
         is_grasped = info["is_grasped"]
 
-        return dict(
-            tcp_pose_wrt_base=tcp_pose_wrt_base,
-            obj_pose_wrt_base=obj_pose_wrt_base,
-            goal_pos_wrt_base=goal_pos_wrt_base,
-            is_grasped=is_grasped,
-        )
+        return {
+            "tcp_pose_wrt_base": tcp_pose_wrt_base,
+            "obj_pose_wrt_base": obj_pose_wrt_base,
+            "goal_pos_wrt_base": goal_pos_wrt_base,
+            "is_grasped": is_grasped,
+        }
 
     # -------------------------------------------------------------------------------------------------
 

@@ -176,12 +176,12 @@ class ManiskillHABEnv(gym.Env):
 
     def _extract_obs_image(self, raw_obs):
         proprio_states = torch.cat(
-            [_agent_state for _agent_state in raw_obs["agent"].values()], dim=1
+            list(raw_obs["agent"].values()), dim=1
         )  # 'qpos', 'qvel'
         extra_obs = raw_obs["extra"]  # extra_obs = extract_obs["extra"]
         extra_obs["is_grasped"] = extra_obs["is_grasped"].unsqueeze(1)
         extra_obs_cat = torch.cat(
-            [_agent_state for _agent_state in extra_obs.values()], dim=1
+            list(extra_obs.values()), dim=1
         )  # 'tcp_pose_wrt_base', 'obj_pose_wrt_base', 'goal_pos_wrt_base', 'is_grasped']
         fetch_head_depth, fetch_hand_depth, fetch_head_rgb, fetch_hand_rgb = (
             None,

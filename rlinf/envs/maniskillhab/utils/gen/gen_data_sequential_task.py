@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import json
 import random
 import sys
@@ -28,10 +32,10 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from mshab.envs import SequentialTaskEnv
 
-POLICY_TYPE_TASK_SUBTASK_TO_TARG_IDS = dict(
-    rl=dict(
-        tidy_house=dict(
-            pick=[
+POLICY_TYPE_TASK_SUBTASK_TO_TARG_IDS = {
+    "rl": {
+        "tidy_house": {
+            "pick": [
                 "002_master_chef_can",
                 "003_cracker_box",
                 "004_sugar_box",
@@ -43,7 +47,7 @@ POLICY_TYPE_TASK_SUBTASK_TO_TARG_IDS = dict(
                 "024_bowl",
                 "all",
             ],
-            place=[
+            "place": [
                 "002_master_chef_can",
                 "003_cracker_box",
                 "004_sugar_box",
@@ -55,10 +59,10 @@ POLICY_TYPE_TASK_SUBTASK_TO_TARG_IDS = dict(
                 "024_bowl",
                 "all",
             ],
-            navigate=["all"],
-        ),
-        prepare_groceries=dict(
-            pick=[
+            "navigate": ["all"],
+        },
+        "prepare_groceries": {
+            "pick": [
                 "002_master_chef_can",
                 "003_cracker_box",
                 "004_sugar_box",
@@ -70,7 +74,7 @@ POLICY_TYPE_TASK_SUBTASK_TO_TARG_IDS = dict(
                 "024_bowl",
                 "all",
             ],
-            place=[
+            "place": [
                 "002_master_chef_can",
                 "003_cracker_box",
                 "004_sugar_box",
@@ -82,17 +86,17 @@ POLICY_TYPE_TASK_SUBTASK_TO_TARG_IDS = dict(
                 "024_bowl",
                 "all",
             ],
-            navigate=["all"],
-        ),
-        set_table=dict(
-            pick=["013_apple", "024_bowl", "all"],
-            place=["013_apple", "024_bowl", "all"],
-            navigate=["all"],
-            open=["fridge", "kitchen_counter"],
-            close=["fridge", "kitchen_counter"],
-        ),
-    ),
-)
+            "navigate": ["all"],
+        },
+        "set_table": {
+            "pick": ["013_apple", "024_bowl", "all"],
+            "place": ["013_apple", "024_bowl", "all"],
+            "navigate": ["all"],
+            "open": ["fridge", "kitchen_counter"],
+            "close": ["fridge", "kitchen_counter"],
+        },
+    },
+}
 
 NUM_ENVS = 189
 SEED = 2024
@@ -130,11 +134,11 @@ def eval(task):
         env_id="SequentialTask-v0",
         obs_mode="rgbd",
         num_envs=NUM_ENVS,
-        max_episode_steps=dict(
-            tidy_house=200 * 10 + 500 * 10,
-            prepare_groceries=200 * 6 + 500 * 6,
-            set_table=200 * 8 + 500 * 8,
-        )[task],
+        max_episode_steps={
+            "tidy_house": 200 * 10 + 500 * 10,
+            "prepare_groceries": 200 * 6 + 500 * 6,
+            "set_table": 200 * 8 + 500 * 8,
+        }[task],
         record_video=RECORD_VIDEO or DEBUG_VIDEO_GEN,
         info_on_video=False,
         debug_video=DEBUG_VIDEO_GEN,
@@ -157,7 +161,7 @@ def eval(task):
         clear_out=False,
         tensorboard=False,
         wandb=False,
-        exp_cfg=dict(env_cfg=asdict(eval_env_cfg)),
+        exp_cfg={"env_cfg": asdict(eval_env_cfg)},
     )
     logger = Logger(
         logger_cfg=logger_cfg,
@@ -191,7 +195,7 @@ def eval(task):
         wrappers=wrappers,
     )
     uenv: SequentialTaskEnv = eval_envs.unwrapped
-    eval_obs, _ = eval_envs.reset(seed=SEED, options=dict(reconfigure=True))
+    eval_obs, _ = eval_envs.reset(seed=SEED, options={"reconfigure": True})
     if uenv.render_mode == "human":
         uenv.render()
 
@@ -263,11 +267,13 @@ def eval(task):
                 torch.load(algo_ckpt_path, map_location=device)["agent"]
             )
             policy.to(device)
-            policy_act_fn = lambda obs: policy.get_action(obs, deterministic=True)
+
+            def policy_act_fn(obs):
+                return policy.get_action(obs, deterministic=True)
         elif algo_cfg.name == "sac":
             pixels_obs_space: spaces.Dict = obs_space["pixels"]
             state_obs_space: spaces.Box = obs_space["state"]
-            model_pixel_obs_space = dict()
+            model_pixel_obs_space = {}
             for k, space in pixels_obs_space.items():
                 shape, low, high, dtype = (
                     space.shape,
@@ -304,12 +310,14 @@ def eval(task):
                 torch.load(algo_ckpt_path, map_location=device)["agent"]
             )
             policy.to(device)
-            policy_act_fn = lambda obs: policy.actor(
-                obs["pixels"],
-                obs["state"],
-                compute_pi=False,
-                compute_log_pi=False,
-            )[0]
+
+            def policy_act_fn(obs):
+                return policy.actor(
+                    obs["pixels"],
+                    obs["state"],
+                    compute_pi=False,
+                    compute_log_pi=False,
+                )[0]
         else:
             raise NotImplementedError(f"algo {algo_cfg.name} not supported")
         policy_act_fn(to_tensor(eval_obs, device=device, dtype="float"))
@@ -319,11 +327,11 @@ def eval(task):
     if not mshab_ckpt_dir.exists():
         mshab_ckpt_dir = Path("mshab_checkpoints")
 
-    policies = dict()
+    policies = {}
     for subtask_name, subtask_targs in POLICY_TYPE_TASK_SUBTASK_TO_TARG_IDS[POLICY_KEY][
         task
     ].items():
-        policies[subtask_name] = dict()
+        policies[subtask_name] = {}
         for targ_name in subtask_targs:
             cfg_path = (
                 mshab_ckpt_dir
@@ -350,12 +358,15 @@ def eval(task):
 
                 # get subtask_type for subtask policy querying
                 subtask_pointer = uenv.subtask_pointer.clone()
-                get_subtask_type = lambda: uenv.task_ids[
-                    torch.clip(
-                        subtask_pointer,
-                        max=len(uenv.task_plan) - 1,
-                    )
-                ]
+
+                def get_subtask_type():
+                    return uenv.task_ids[
+                        torch.clip(
+                            subtask_pointer,
+                            max=len(uenv.task_plan) - 1,
+                        )
+                    ]
+
                 subtask_type = get_subtask_type()
 
                 # find correct envs for each subtask policy
@@ -400,7 +411,7 @@ def eval(task):
                     or torch.any(open_env_idx)
                     or torch.any(close_env_idx)
                 ):
-                    tn_env_idxs = dict()
+                    tn_env_idxs = {}
                     for env_num, tn in enumerate(targ_names):
                         if tn not in tn_env_idxs:
                             tn_env_idxs[tn] = []
@@ -486,10 +497,10 @@ def eval(task):
                 subtask_fail_counts[fail_subtask] += num_envs
             with open(logger.exp_path / "subtask_fail_counts.json", "w+") as f:
                 json.dump(
-                    dict(
-                        (str(k), int(subtask_fail_counts[k]))
+                    {
+                        str(k): int(subtask_fail_counts[k])
                         for k in sorted(subtask_fail_counts.keys())
-                    ),
+                    },
                     f,
                 )
 
@@ -518,23 +529,25 @@ def eval(task):
 
     print(
         "subtask_fail_counts",
-        dict((k, subtask_fail_counts[k]) for k in sorted(subtask_fail_counts.keys())),
+        {k: subtask_fail_counts[k] for k in sorted(subtask_fail_counts.keys())},
     )
 
-    results_logs = dict(
-        num_trajs=len(eval_envs.return_queue),
-        return_per_step=common.to_tensor(eval_envs.return_queue, device=device)
+    results_logs = {
+        "num_trajs": len(eval_envs.return_queue),
+        "return_per_step": common.to_tensor(eval_envs.return_queue, device=device)
         .float()
         .mean()
         / eval_envs.max_episode_steps,
-        success_once=common.to_tensor(eval_envs.success_once_queue, device=device)
+        "success_once": common.to_tensor(eval_envs.success_once_queue, device=device)
         .float()
         .mean(),
-        success_at_end=common.to_tensor(eval_envs.success_at_end_queue, device=device)
+        "success_at_end": common.to_tensor(
+            eval_envs.success_at_end_queue, device=device
+        )
         .float()
         .mean(),
-        len=common.to_tensor(eval_envs.length_queue, device=device).float().mean(),
-    )
+        "len": common.to_tensor(eval_envs.length_queue, device=device).float().mean(),
+    }
     time_logs = timer.get_time_logs(pbar.last_print_n * eval_envs.max_episode_steps)
     print(
         "results",

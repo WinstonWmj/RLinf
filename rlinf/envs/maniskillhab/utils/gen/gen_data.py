@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import os
 import random
 from collections import defaultdict
@@ -33,16 +37,16 @@ SAVE_GRASP_POSE = False
 RECORD_VIDEO = False
 DEBUG_VIDEO_GEN = False
 
-SUBTASK_TO_EPISODE_LABELS = dict(
-    pick=["straightforward_success"],
-    place=["placed_in_goal_success"],
-    navigate=["navigation_success"],
-    open=["open_success"],
-    close=dict(
-        fridge=["closed_success", "success_then_excessive_collisions"],
-        kitchen_counter=["closed_success"],
-    ),
-)
+SUBTASK_TO_EPISODE_LABELS = {
+    "pick": ["straightforward_success"],
+    "place": ["placed_in_goal_success"],
+    "navigate": ["navigation_success"],
+    "open": ["open_success"],
+    "close": {
+        "fridge": ["closed_success", "success_then_excessive_collisions"],
+        "kitchen_counter": ["closed_success"],
+    },
+}
 
 
 def eval(
@@ -112,13 +116,13 @@ def eval(
             / "spawn_data.pt"
         ),
         extra_stat_keys=[],
-        env_kwargs=dict(
-            require_build_configs_repeated_equally_across_envs=False,
-            add_event_tracker_info=True,
-            robot_force_mult=0.001,
-            robot_force_penalty_min=0.2,
-            target_randomization=False,
-        ),
+        env_kwargs={
+            "require_build_configs_repeated_equally_across_envs": False,
+            "add_event_tracker_info": True,
+            "robot_force_mult": 0.001,
+            "robot_force_penalty_min": 0.2,
+            "target_randomization": False,
+        },
     )
     logger_cfg = LoggerConfig(
         workspace="mshab_exps",
@@ -138,7 +142,7 @@ def eval(
         clear_out=False,
         tensorboard=False,
         wandb=False,
-        exp_cfg=dict(env_cfg=asdict(env_cfg)),
+        exp_cfg={"env_cfg": asdict(env_cfg)},
     )
 
     logger = Logger(
@@ -185,7 +189,7 @@ def eval(
     pixels_obs_space: spaces.Dict = obs_space["pixels"]
     state_obs_space: spaces.Box = obs_space["state"]
     act_space = eval_envs.unwrapped.single_action_space
-    model_pixel_obs_space = dict()
+    model_pixel_obs_space = {}
     for k, space in pixels_obs_space.items():
         shape, low, high, dtype = (
             space.shape,
@@ -208,7 +212,7 @@ def eval(
     if not mshab_ckpt_dir.exists():
         mshab_ckpt_dir = Path("mshab_checkpoints")
 
-    policies = dict()
+    policies = {}
     for subtask_name in SUBTASKS:
         cfg_path = (
             Path(override_cfg_path)
@@ -227,7 +231,9 @@ def eval(
             policy.eval()
             policy.load_state_dict(torch.load(ckpt_path, map_location=device)["agent"])
             policy.to(device)
-            policy_act_fn = lambda obs: policy.get_action(obs, deterministic=True)
+
+            def policy_act_fn(obs):
+                return policy.get_action(obs, deterministic=True)
         elif algo_cfg.name == "sac":
             policy = SACAgent(
                 model_pixel_obs_space,
@@ -250,12 +256,14 @@ def eval(
             policy.eval()
             policy.to(device)
             policy.load_state_dict(torch.load(ckpt_path, map_location=device)["agent"])
-            policy_act_fn = lambda obs: policy.actor(
-                obs["pixels"],
-                obs["state"],
-                compute_pi=False,
-                compute_log_pi=False,
-            )[0]
+
+            def policy_act_fn(obs):
+                return policy.actor(
+                    obs["pixels"],
+                    obs["state"],
+                    compute_pi=False,
+                    compute_log_pi=False,
+                )[0]
         else:
             raise NotImplementedError(f"algo {algo_cfg.name} not supported")
         policies[subtask_name] = policy_act_fn
@@ -298,15 +306,14 @@ def eval(
     # RUN
     # -------------------------------------------------------------------------------------------------
 
-    get_subtask_type = lambda: eval_envs.unwrapped.task_ids[
-        eval_envs.unwrapped.subtask_pointer
-    ]
+    def get_subtask_type():
+        return eval_envs.unwrapped.task_ids[eval_envs.unwrapped.subtask_pointer]
 
     eval_obs = to_tensor(eval_envs.reset(seed=SEED)[0], device=device, dtype="float")
     subtask_type = get_subtask_type()
     last_subtask_type = subtask_type.clone()
     pbar = tqdm(range(MAX_TRAJECTORIES), total=MAX_TRAJECTORIES)
-    articulation_types_by_label = dict()
+    articulation_types_by_label = {}
     rcumulative_forces_by_label = defaultdict(list)
 
     if SAVE_GRASP_POSE:
@@ -410,10 +417,10 @@ def eval(
         os.makedirs(grasp_pose_fp.parent, exist_ok=True)
         with open(grasp_pose_fp, "wb") as f:
             torch.save(
-                dict(
-                    success_qpos=success_qposes,
-                    success_obj_raw_pose_wrt_tcp=success_obj_raw_poses_wrt_tcp,
-                ),
+                {
+                    "success_qpos": success_qposes,
+                    "success_obj_raw_pose_wrt_tcp": success_obj_raw_poses_wrt_tcp,
+                },
                 f,
             )
 
@@ -423,20 +430,22 @@ def eval(
     if SAVE_GRASP_POSE:
         print(f"{len(success_qposes)=}, {len(success_obj_raw_poses_wrt_tcp)=}")
 
-    results_logs = dict(
-        num_trajs=len(eval_envs.return_queue),
-        return_per_step=common.to_tensor(eval_envs.return_queue, device=device)
+    results_logs = {
+        "num_trajs": len(eval_envs.return_queue),
+        "return_per_step": common.to_tensor(eval_envs.return_queue, device=device)
         .float()
         .mean()
         / eval_envs.max_episode_steps,
-        success_once=common.to_tensor(eval_envs.success_once_queue, device=device)
+        "success_once": common.to_tensor(eval_envs.success_once_queue, device=device)
         .float()
         .mean(),
-        success_at_end=common.to_tensor(eval_envs.success_at_end_queue, device=device)
+        "success_at_end": common.to_tensor(
+            eval_envs.success_at_end_queue, device=device
+        )
         .float()
         .mean(),
-        len=common.to_tensor(eval_envs.length_queue, device=device).float().mean(),
-    )
+        "len": common.to_tensor(eval_envs.length_queue, device=device).float().mean(),
+    }
     time_logs = timer.get_time_logs(pbar.last_print_n * env_cfg.max_episode_steps)
     print(
         "results",

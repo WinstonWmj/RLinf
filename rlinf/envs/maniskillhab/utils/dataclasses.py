@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import copy
 from dataclasses import MISSING, field, fields, is_dataclass
 from typing import Any
@@ -12,12 +16,12 @@ def _recursive_asdict_dataclass(data: Any) -> dict[str, Any]:
         return MISSING
 
     result = {}
-    for field in fields(data):
-        value = getattr(data, field.name, get_value(field))
+    for _field in fields(data):
+        value = getattr(data, _field.name, get_value(_field))
         if value is MISSING:
             # Skip fields with no default value
             continue
-        result[field.name] = recursive_asdict(value)
+        result[_field.name] = recursive_asdict(value)
     return result
 
 

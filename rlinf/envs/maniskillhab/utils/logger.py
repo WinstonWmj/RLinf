@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import os
 import os.path as osp
 import pickle
@@ -11,18 +15,20 @@ from typing import Callable, Optional, Union
 import numpy as np
 import wandb as wb
 from omegaconf import OmegaConf
+from omegaconf.dictconfig import DictConfig
+from omegaconf.listconfig import ListConfig
 
-color2num = dict(
-    gray=30,
-    red=31,
-    green=32,
-    yellow=33,
-    blue=34,
-    magenta=35,
-    cyan=36,
-    white=37,
-    crimson=38,
-)
+color2num = {
+    "gray": 30,
+    "red": 31,
+    "green": 32,
+    "yellow": 33,
+    "blue": 34,
+    "magenta": 35,
+    "cyan": 36,
+    "white": 37,
+    "crimson": 38,
+}
 
 
 def colorize(string, color, bold=False, highlight=False):
@@ -69,7 +75,7 @@ class Logger:
     def __init__(
         self,
         logger_cfg: LoggerConfig,
-        save_fn: Callable = None,
+        save_fn: Callable | None = None,
     ):
         self.tensorboard = logger_cfg.tensorboard
         self.tb_writer = None
@@ -84,7 +90,7 @@ class Logger:
 
         self.checkpoint_logger = logger_cfg.checkpoint_logger
 
-        self.best_stats = dict()
+        self.best_stats = {}
         self.last_log_step = 0
         if logger_cfg.clear_out:
             if osp.exists(self.exp_path):
@@ -120,7 +126,7 @@ class Logger:
 
         self.data = defaultdict(dict)
         self.data_log_summary = defaultdict(dict)
-        self.stats = dict()
+        self.stats = {}
         self.best_stats_cfg = logger_cfg.best_stats_cfg
         self.save_fn = save_fn
 
@@ -146,7 +152,7 @@ class Logger:
             self.tb_writer = SummaryWriter(log_dir=self.log_path)
 
     def _save_config(self, config: Union[dict, OmegaConf], verbose=2):
-        if type(config) == type(OmegaConf.create()):
+        if isinstance(config, (DictConfig, ListConfig)):
             config = OmegaConf.to_container(config)
         if self.wandb:
             wb.config.update(config, allow_val_change=True)
@@ -232,7 +238,7 @@ class Logger:
         for tag in self.data.keys():
             data_dict = self.data[tag]
             for k, v in data_dict.items():
-                key_vals = dict()
+                key_vals = {}
                 if isinstance(v, list) or isinstance(v, np.ndarray):
                     if len(v) > 0:
                         vals = np.array(v)
@@ -265,9 +271,10 @@ class Logger:
                             ):
                                 update_val = True
                         if update_val:
-                            self.best_stats[name] = dict(
-                                val=scalar, step=self.last_log_step
-                            )
+                            self.best_stats[name] = {
+                                "val": scalar,
+                                "step": self.last_log_step,
+                            }
                             fmt_name = name.replace("/", "_")
                             if self.save_fn is not None:
                                 self.save_fn(
@@ -293,7 +300,7 @@ class Logger:
         self.stats = {}
 
     def state_dict(self):
-        return dict(best_stats=self.best_stats, last_log_step=self.last_log_step)
+        return {"best_stats": self.best_stats, "last_log_step": self.last_log_step}
 
     def load(self, data):
         self.best_stats = data["best_stats"]

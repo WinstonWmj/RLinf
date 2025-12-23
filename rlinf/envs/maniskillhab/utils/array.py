@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import copy
 from typing import Sequence, Union
 
@@ -34,7 +38,7 @@ def tensor_intersection_idx(a, b):
 
 def recursive_deepcopy(data):
     if isinstance(data, dict):
-        return dict((k, recursive_deepcopy(v)) for k, v in data.items())
+        return {k: recursive_deepcopy(v) for k, v in data.items()}
     if isinstance(data, list):
         return [recursive_deepcopy(x) for x in data]
     if isinstance(data, set):
@@ -52,7 +56,7 @@ def recursive_slice(obs, slice, inplace=False):
             for k, v in obs.items():
                 obs[k] = recursive_slice(v, slice)
             return obs
-        return dict((k, recursive_slice(v, slice)) for k, v in obs.items())
+        return {k: recursive_slice(v, slice) for k, v in obs.items()}
     else:
         return obs[slice]
 

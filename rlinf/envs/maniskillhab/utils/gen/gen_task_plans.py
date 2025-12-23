@@ -1,3 +1,7 @@
+# Copyright 2025 ManiSkill-HAB Authors.
+#
+# wei mingjie copy from https://github.com/arth-shukla/mshab/tree/main and make some revise
+
 import argparse
 import json
 import os
@@ -65,7 +69,7 @@ def get_name_num(name_num, split=":"):
 
 def gen_pick_task_plans(scene_builder):
     task_plans = []
-    cached_urdfs = dict()
+    cached_urdfs = {}
     for init_config_name in tqdm(scene_builder._rearrange_configs):
         with open(
             osp.join(
@@ -161,7 +165,7 @@ def gen_pick_task_plans(scene_builder):
 def gen_place_task_plans(scene_builder):
     q = transforms3d.quaternions.axangle2quat(np.array([1, 0, 0]), theta=np.deg2rad(90))
     task_plans = []
-    cached_urdfs = dict()
+    cached_urdfs = {}
     for init_config_name in tqdm(scene_builder._rearrange_configs):
         with open(
             osp.join(
@@ -381,7 +385,7 @@ def gen_place_task_plans(scene_builder):
 
 def gen_open_task_plans(scene_builder):
     task_plans = []
-    cached_urdfs = dict()
+    cached_urdfs = {}
     for init_config_name in tqdm(scene_builder._rearrange_configs):
         with open(
             osp.join(
@@ -483,7 +487,7 @@ def gen_open_task_plans(scene_builder):
 
 def gen_close_task_plans(scene_builder):
     task_plans = []
-    cached_urdfs = dict()
+    cached_urdfs = {}
     for init_config_name in tqdm(scene_builder._rearrange_configs):
         with open(
             osp.join(
@@ -590,7 +594,7 @@ def gen_close_task_plans(scene_builder):
 def gen_navigate_task_plans(scene_builder):
     q = transforms3d.quaternions.axangle2quat(np.array([1, 0, 0]), theta=np.deg2rad(90))
     task_plans = []
-    cached_urdfs = dict()
+    cached_urdfs = {}
 
     def get_urdf_info(articulation_id, link_num):
         if articulation_id in cached_urdfs:
@@ -641,7 +645,7 @@ def gen_navigate_task_plans(scene_builder):
 
         build_config_name = Path(episode_json["scene_id"]).name
 
-        init_poses = dict()
+        init_poses = {}
         num_per_rigid_obj = defaultdict(int)
         for obj_path, raw_pose_T in episode_json["rigid_objs"]:
             obj_name_from_path = obj_path.replace(".object_config.json", "")
@@ -846,13 +850,13 @@ def main():
     }[dataset](None)
 
     if args.subtask == "sequential":
-        task_plan_order = dict(
-            tidy_house=["pick", "place"] * 5,
-            prepare_groceries=["pick", "place"] * 3,
-            set_table=["open", "pick", "place", "close"] * 2,
-        )[args.task]
+        task_plan_order = {
+            "tidy_house": ["pick", "place"] * 5,
+            "prepare_groceries": ["pick", "place"] * 3,
+            "set_table": ["open", "pick", "place", "close"] * 2,
+        }[args.task]
 
-        subtask_to_plan_data: dict[str, PlanData] = dict()
+        subtask_to_plan_data: dict[str, PlanData] = {}
         for subtask_name in set(task_plan_order):
             fp = args.root / args.task / subtask_name / args.split / "all.json"
             print("Loading", str(fp) + "...")
@@ -862,7 +866,7 @@ def main():
             len(data.plans) for data in subtask_to_plan_data.values()
         ]
         num_times_each_subtask_in_sequential_plan = [
-            sum([int(x == subtask_name) for x in task_plan_order])
+            sum(int(x == subtask_name) for x in task_plan_order)
             for subtask_name in set(task_plan_order)
         ]
         assert all_equal(num_plans_per_subtask) and all_equal(
@@ -876,9 +880,7 @@ def main():
             == num_plans_to_make
         )
 
-        subtask_to_pointer = dict(
-            (subtask_name, 0) for subtask_name in set(task_plan_order)
-        )
+        subtask_to_pointer = dict.fromkeys(set(task_plan_order), 0)
 
         plans = []
         for tp_num in tqdm(range(num_plans_to_make)):
@@ -915,10 +917,8 @@ def main():
             )
 
         assert all(
-            [
-                subtask_to_pointer[subtask_name] == num_plans_per_subtask[0]
-                for subtask_name in set(task_plan_order)
-            ]
+            subtask_to_pointer[subtask_name] == num_plans_per_subtask[0]
+            for subtask_name in set(task_plan_order)
         ), f"{subtask_to_pointer}, {num_plans_per_subtask[0]}"
         plan_data = PlanData(dataset=dataset, plans=plans)
 
@@ -934,13 +934,13 @@ def main():
 
         return
 
-    all_task_plans: list[TaskPlan] = dict(
-        pick=gen_pick_task_plans,
-        place=gen_place_task_plans,
-        open=gen_open_task_plans,
-        close=gen_close_task_plans,
-        navigate=gen_navigate_task_plans,
-    )[args.subtask](scene_builder)
+    all_task_plans: list[TaskPlan] = {
+        "pick": gen_pick_task_plans,
+        "place": gen_place_task_plans,
+        "open": gen_open_task_plans,
+        "close": gen_close_task_plans,
+        "navigate": gen_navigate_task_plans,
+    }[args.subtask](scene_builder)
 
     for tp_num, tp in enumerate(all_task_plans):
         for subtask_num, subtask in enumerate(tp.subtasks):
@@ -949,7 +949,7 @@ def main():
             )
             subtask.composite_subtask_uids = [subtask.uid]
 
-    plan_data_by_targ_id = dict(all=PlanData(dataset=dataset, plans=all_task_plans))
+    plan_data_by_targ_id = {"all": PlanData(dataset=dataset, plans=all_task_plans)}
 
     if args.subtask != "navigate":
         if args.subtask in ["pick", "place"]:
@@ -962,21 +962,18 @@ def main():
             all_targ_ids.add(tp.subtasks[0].__dict__[targ_attribute_id].split("-")[0])
 
         plan_data_by_targ_id.update(
-            dict(
-                (
-                    tid,
-                    PlanData(
-                        dataset=dataset,
-                        plans=[
-                            tp
-                            for tp in all_task_plans
-                            if tp.subtasks[0].__dict__[targ_attribute_id].split("-")[0]
-                            == tid
-                        ],
-                    ),
+            {
+                tid: PlanData(
+                    dataset=dataset,
+                    plans=[
+                        tp
+                        for tp in all_task_plans
+                        if tp.subtasks[0].__dict__[targ_attribute_id].split("-")[0]
+                        == tid
+                    ],
                 )
                 for tid in all_targ_ids
-            )
+            }
         )
 
     for tid, plan_data in plan_data_by_targ_id.items():
