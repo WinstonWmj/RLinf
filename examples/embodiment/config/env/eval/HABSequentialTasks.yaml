@@ -1,4 +1,4 @@
-simulator_type: maniskill
+simulator_type: maniskillhab
 auto_reset: True
 ignore_terminations: True
 use_rel_reward: True

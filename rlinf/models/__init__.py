@@ -297,6 +297,15 @@ def get_model(cfg: DictConfig, override_config_kwargs=None):
             num_action_chunks=cfg.num_action_chunks,
             add_value_head=cfg.add_value_head,
         )
+    elif model_type == SupportedModel.CNN_POLICY:
+        from .embodiment.cnn_policy import CNNPolicy
+
+        model = CNNPolicy(
+            cfg.obs_dim,
+            cfg.action_dim,
+            num_action_chunks=cfg.num_action_chunks,
+            add_value_head=cfg.add_value_head,
+        )
     elif model_type == SupportedModel.GR00T:
         from pathlib import Path
 

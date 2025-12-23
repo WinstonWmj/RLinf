@@ -52,6 +52,7 @@ class SupportedModel(Enum):
     OPENVLA_OFT = ("openvla_oft", "embodied")
     OPENPI = ("openpi", "embodied")
     MLP_POLICY = ("mlp_policy", "embodied")
+    CNN_POLICY = ("cnn_policy", "embodied")
     GR00T = ("gr00t", "embodied")
 
     def __new__(cls, value, category):

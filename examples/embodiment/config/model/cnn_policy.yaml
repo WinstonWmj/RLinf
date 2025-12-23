@@ -1,15 +1,22 @@
 model_type: "cnn_policy"
 
-model_path: ""
+# Model path - should be set in specific config files
+model_path: "/path/to/model/cnn_policy"
 
-policy_setup: "fetch"
-obs_dim: 42
-action_dim: 13
+# Training settings
+obs_dim: 3  # size of input's channel
 num_action_chunks: 1
-hidden_dim: 256
+action_dim: 13  # can be set 12 or 13, according to the control_mode
+proprio_dim: 42  # qpos + qvel + ... = 12 + 12 + ... = 24
+precision: "bf16"
+use_proprio: True
+add_value_head: False
+num_images_in_input: 1
+center_crop: True
 
-precision: "32"
-add_value_head: True
-
+# LoRA settings
 is_lora: False
 lora_rank: 32
+
+# used for mshab
+policy_setup: "fetch"
