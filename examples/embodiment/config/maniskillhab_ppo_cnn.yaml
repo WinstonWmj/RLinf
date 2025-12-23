@@ -87,7 +87,7 @@ env:
   group_name: "EnvGroup"
   enable_offload: False
 
-  # Override the default values in env/maniskill_pick_cube
+  # Override the default values in env/HABPickSubtask
   train:
     total_num_envs: 8
     auto_reset: True

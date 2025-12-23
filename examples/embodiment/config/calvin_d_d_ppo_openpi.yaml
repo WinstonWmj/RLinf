@@ -41,7 +41,7 @@ algorithm:
   group_size: 1
   reward_coef: 1.0
 
-  rollout_epoch: 8
+  rollout_epoch: 1
   eval_rollout_epoch: 1 # set eval_rollout_epoch > 0 when enable runner.only_eval or runner.val_check_interval > 0
   reward_type: chunk_level
   logprob_type: chunk_level
@@ -87,7 +87,7 @@ env:
   enable_offload: False
 
   train:
-    total_num_envs: 64
+    total_num_envs: 8
     max_episode_steps: 480
     max_steps_per_rollout_epoch: 480
     group_size: ${algorithm.group_size}
@@ -112,19 +112,19 @@ rollout:
   pipeline_stage_num: 1
 
   model:
-    model_path: "/path/to/model/RLinf-Pi0-SFT"
+    model_path: "/mnt/public/chenkang/openpi-main/checkpoints/sft/pi0_calvin/ABC_calvin_32_10k/10000"
     precision: ${actor.model.precision}
 
 actor:
   group_name: "ActorGroup"
   training_backend: "fsdp"
-  micro_batch_size: 128
-  global_batch_size: 2048
+  micro_batch_size: 16
+  global_batch_size: 32
   seed: 42
   enable_offload: False
 
   model:
-    model_path: "/path/to/model/RLinf-Pi0-SFT"
+    model_path: "/mnt/public/chenkang/openpi-main/checkpoints/sft/pi0_calvin/ABC_calvin_32_10k/10000"
     model_type: "openpi"
     num_action_chunks: 5
     num_steps: 5

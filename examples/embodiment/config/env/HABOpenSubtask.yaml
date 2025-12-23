@@ -17,11 +17,7 @@ video_cfg:
   info_on_video: True
   video_base_dir: ${runner.logger.log_path}/video/train
 
-frame_stack_num: 3
-stacking_keys: 
-  - fetch_head_depth
-  - fetch_hand_depth
-
+# mshab specific setting
 log_extra_stat_keys: True
 
 TASK: set_table  # options: 'prepare_groceries', 'set_table', 'tidy_house'
@@ -40,7 +36,6 @@ controller_config:
 
 init_params:
   id: "OpenSubtaskTrain-v0"
-  max_episode_steps: ${env.train.max_episode_steps}
   obs_mode: "rgbd"  # can be replace by `rgb+depth`, `rgb+depth+segmentation` (or any combination of `rgb`, `depth`, `segmentation`). Besides, `rgbd` is a short hand for `rgb+depth`
   use_depth_only: True
   reward_mode: "normalized_dense"
@@ -49,7 +44,6 @@ init_params:
   render_mode: "all"  # ('human', 'rgb_array', 'sensors', 'all')  https://maniskill.readthedocs.io/en/latest/api/mani_skill/envs/sapien_env/index.html#mani_skill.envs.sapien_env.BaseEnv.SUPPORTED_RENDER_MODES
   shader_dir: "minimal"  # options: minimal, default, ... https://maniskill.readthedocs.io/en/latest/user_guide/concepts/sensors.html#shaders-and-textures
   robot_uids: "fetch"
-  num_envs: ${multiply:${algorithm.group_size}, ${algorithm.num_group_envs}}
   sim_backend: "gpu"
   env_kwargs:
     robot_force_mult: 0.001

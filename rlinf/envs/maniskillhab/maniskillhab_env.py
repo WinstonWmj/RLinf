@@ -226,7 +226,8 @@ class ManiskillHABEnv(gym.Env):
             "extra": extra_obs,
         }
         if self.cfg.use_instruction:
-            extracted_obs["task_descriptions"] = self.instruction
+            prompt = self.instruction if self.instruction else ""
+            extracted_obs["task_descriptions"] = prompt
         """
         mjwei NOTE: the reason for stacking frame 3 times is the `in_channels` of CNN is 3 and the input_sizes of Prismatic Model is also 3.
         """

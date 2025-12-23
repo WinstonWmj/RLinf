@@ -14,7 +14,8 @@
 
 import hydra
 import torch
-
+import copy
+from omegaconf import open_dict
 from rlinf.models import get_model, get_vla_model_config_and_processor
 
 
@@ -22,7 +23,13 @@ from rlinf.models import get_model, get_vla_model_config_and_processor
     version_base="1.1", config_path="config", config_name="maniskill_ppo_openvlaoft"
 )
 def main(cfg) -> None:
-    model = get_model(cfg.actor.checkpoint_load_path, cfg.actor.model)
+    actor_model_config = cfg.actor.model
+    rollout_model_config = copy.deepcopy(actor_model_config)
+    with open_dict(rollout_model_config):
+        rollout_model_config.precision = cfg.rollout.model.precision
+        rollout_model_config.path = cfg.rollout.model.model_path
+    
+    model = get_model(actor_model_config)
     model_config, input_processor = get_vla_model_config_and_processor(cfg.actor)
     model.setup_config_and_processor(model_config, cfg, input_processor)
 
@@ -37,7 +44,7 @@ def main(cfg) -> None:
     kwargs["do_sample"] = cfg.actor.model.get("do_sample", True)
 
     env_obs = torch.load(
-        "/mnt/mnt/public_zgc/home/mjwei/repo/RLinf/outputs/extracted_obs.pt"
+        "/mnt/public/mjwei/repo/RLinf-mshab/outputs/extracted_obs.pt",
     )
     with torch.no_grad():
         actions, result = model.predict_action_batch(

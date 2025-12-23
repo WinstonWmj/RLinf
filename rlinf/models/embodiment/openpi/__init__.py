@@ -43,6 +43,9 @@ from rlinf.models.embodiment.openpi.dataconfig.metaworld_dataconfig import (
 from rlinf.models.embodiment.openpi.dataconfig.robocasa_dataconfig import (
     LeRobotRobocasaDataConfig,
 )
+from rlinf.models.embodiment.openpi.dataconfig.maniskillhab_dataconfig import (
+    LeRobotMshabDataConfig,
+)
 
 _CONFIGS = [
     TrainConfig(
@@ -219,6 +222,35 @@ _CONFIGS = [
             action_train_with_rotation_6d=False,  # User can add extra config in custom dataset
         ),
         pytorch_weight_path="checkpoints/torch/pi0_base",
+    ),
+    TrainConfig(
+        name="pi0_open_mshab",
+        model=pi0_config.Pi0Config(action_horizon=8),
+        data=LeRobotMshabDataConfig(
+            repo_id = "assets/chenjiawei1018/mshab_norm_stats",
+            default_prompt="defalut prompt", # if we don't set prompt_from_task=True, then use generate 'prompt' for dataset using default prompt
+            raw_action_is_delta=True, # True for delta action, False for abs_action
+            action_train_with_rotation_6d=False,
+            base_config=DataConfig(prompt_from_task=True), # we need language instruction
+            # assets=AssetsConfig(
+            #     assets_dir="s3://openpi-assets/checkpoints/pi0_base/assets",
+            #     asset_id="droid",
+            # ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("s3://openpi-assets/checkpoints/pi0_base/params"),
+        pytorch_weight_path="checkpoints/torch/pi0_base",
+        # pytorch_weight_path="/mnt/public/chenjiawei/openpi-main/checkpoints/torch/pi0_base",
+        num_train_steps=100_000,
+        batch_size=64, # If you have x devices, use a batch size that is a multiple of x. batchsize * 0.5625 GB, model need 17GB
+        # in get filter, only variant name is used, other params are not used.
+        # freeze_filter=pi0_config.Pi0Config(paligemma_variant="gemma_2b", 
+        #                             action_expert_variant="gemma_300m",
+        #                             ).get_freeze_filter(),
+        exp_name="local_dataset_finetune",
+        log_interval=100,
+        save_interval=5000,
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
     ),
 ]
 

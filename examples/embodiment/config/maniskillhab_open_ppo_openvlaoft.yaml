@@ -1,6 +1,6 @@
 defaults:
-  - env/HABPickSubtask@env.train
-  - env/HABPickSubtask@env.eval
+  - env/HABOpenSubtask@env.train
+  - env/HABOpenSubtask@env.eval
   - model/openvla_oft@actor.model
   - training_backend/fsdp@actor.fsdp_config
   - override hydra/job_logging: stdout

@@ -1,7 +1,7 @@
 defaults:
   - env/HABPickSubtask@env.train
   - env/HABPickSubtask@env.eval
-  - model/openvla_oft@actor.model
+  - model/pi0@actor.model
   - training_backend/fsdp@actor.fsdp_config
   - override hydra/job_logging: stdout
 
@@ -24,17 +24,20 @@ runner:
   logger:
     log_path: "../results"
     project_name: rlinf
-    experiment_name: "maniskillhab_ppo_openvlaoft"
+    experiment_name: "maniskillhab_ppo_openpi"
     logger_backends: ["tensorboard"] # wandb, swanlab
 
   max_epochs: 1000
   max_steps: -1
 
   only_eval: False
+  eval_policy_path: null # Optional: .pt file or None, if None, will use the checkpoint in rollout.model.model_path
   val_check_interval: -1
-  save_interval: 1
+  save_interval: -1
   seq_length: 4096
   max_prompt_length: 30
+
+  resume_dir: null
 
 algorithm:
   update_epoch: 1
@@ -69,9 +72,10 @@ algorithm:
     do_sample: True
     temperature_train: 1.0
     temperature_eval: 0.6
-    top_k: -1
+    top_k: 50
     top_p: 1.0
     repetition_penalty: 1.0
+    add_BOS: False
 
   # length argument for autoregressive sampling
   # max length means max amount of tokens to generate
@@ -82,6 +86,10 @@ algorithm:
 
 env:
   group_name: "EnvGroup"
+  channel:
+    name: "env_buffer_list"
+    queue_name: "obs_buffer"
+    queue_size: 0
   enable_offload: False
 
   # Override the default values in env/HABPickSubtask
@@ -106,14 +114,19 @@ env:
 
 rollout:
   group_name: "RolloutGroup"
-  backend: "huggingface"
+  channel:
+    name: ${env.channel.name}
+    queue_name: "action_buffer"
+    queue_size: 0
+  mode: "colocate"
+  generation_backend: "huggingface"
+  recompute_logprobs: False
   enable_offload: False
   pipeline_stage_num: 1
 
   model:
-    model_path: "/mnt/public/chenjiawei/logs_and_checkpoint/openvla-7b+mshab_prepare_groceries+b48+lr-0.0005+lora-r32+dropout-0.0--image_aug--no_action_head_only_fridge_state42_action13_only_success_depth_vla7b--5000_chkpt"
+    model_path: "/mnt/public/chenjiawei/openpi/checkpoints/pi0_open_mshab/mshab_openpi_test/15000"
     precision: ${actor.model.precision}
-
 actor:
   group_name: "ActorGroup"
   training_backend: "fsdp"
@@ -124,40 +137,38 @@ actor:
 
   # Override the default values in model/mlp_policy
   model:
-    model_path: "/mnt/public/chenjiawei/logs_and_checkpoint/openvla-7b+mshab_prepare_groceries+b48+lr-0.0005+lora-r32+dropout-0.0--image_aug--no_action_head_only_fridge_state42_action13_only_success_depth_vla7b--5000_chkpt"
-    model_type: "openvla_oft"
-    unnorm_key: mshab_prepare_groceries  # 'fetch_minmax' for debug
-    policy_setup: "fetch"
-    num_action_chunks: 8 # interface for the env
+    model_path: "/mnt/public/chenjiawei/openpi/checkpoints/pi0_open_mshab/mshab_openpi_test/15000"
+    precision: null    # bf16
+    num_action_chunks: 5 # interface for the env
     action_dim: 13
+    num_steps: 4
     add_value_head: True
-    image_size: [224, 224]
-    is_lora: False
-    lora_rank: 32
-    # lora_path: /mnt/mnt/public/hongzhi/models/oft-sft/lora_004000/
-    ckpt_path: null
     use_wrist_image: True
     num_images_in_input: 2
-    attn_implementation: "flash_attention_2"
-    low_cpu_mem_usage: True
-    trust_remote_code: True
-    gradient_checkpointing: True
+    # openpi specific parameters
+    openpi:
+      config_name: "pi0_open_mshab"
+      num_images_in_input: 1
+      noise_level: 0.5
+      action_chunk: ${actor.model.num_action_chunks}
+      num_steps: ${actor.model.num_steps}
+      train_expert_only: True
+      action_env_dim: ${actor.model.action_dim}
+      noise_method: "flow_noise"
+      action_horizon: 8
+      noise_params: [0.16, 0.12, 200]
+      detach_critic_input: True
+      joint_logprob: True # False for flow_sde, True for flow_noise     
+      value_after_vlm: False      # pi0: False. pi0.5: True
 
   optim:
-    lr: 1.0e-4
-    value_lr: 3.0e-3
+    lr: 7.91e-6
+    value_lr: 1.55e-4
     adam_beta1: 0.9
-    adam_beta2: 0.999
+    adam_beta2: 0.95
     adam_eps: 1.0e-05
-    clip_grad: 10.0
+    clip_grad: 1.0
     critic_warmup_steps: 0
-
-  tokenizer:
-    tokenizer_type: "HuggingFaceTokenizer"
-    tokenizer_model: "/mnt/public/chenjiawei/logs_and_checkpoint/openvla-7b+mshab_prepare_groceries+b48+lr-0.0005+lora-r32+dropout-0.0--image_aug--no_action_head_only_fridge_state42_action13_only_success_depth_vla7b--5000_chkpt"
-    use_fast: False
-    trust_remote_code: True
-    padding_side: "right"
 
   # Override the default values in training_backend/fsdp
   fsdp_config:

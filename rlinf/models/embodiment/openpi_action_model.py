@@ -168,6 +168,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch):
         self._output_transform = _transforms.compose(output_transforms)
 
     def input_transform(self, obs: dict, transpose=True):
+        breakpoint()
         inputs = jax.tree.map(lambda x: x, obs)
         # process input
         first_process = "prompt" in inputs.keys()
@@ -280,6 +281,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch):
         }
 
     def obs_processor(self, env_obs):
+        breakpoint()
         # base observation
         processed_obs = {
             "observation/image": env_obs["images"],
@@ -326,6 +328,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch):
         self, env_obs, mode: Literal["train", "eval"] = "train", compute_values=True
     ) -> tuple[np.ndarray, dict[str, Any]]:
         to_process_obs = self.obs_processor(env_obs)  # env obs -> policy input obs
+        breakpoint()
         processed_obs = self.input_transform(
             to_process_obs
         )  # policy input obs -> model input obs
