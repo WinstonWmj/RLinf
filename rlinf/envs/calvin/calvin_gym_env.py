@@ -141,7 +141,8 @@ class CalvinEnv(gym.Env):
     def _init_task_info(self):
         self.task_sequence = [None] * self.num_envs
         self.current_task = [None] * self.num_envs
-        self.current_task_idx = [0] * self.num_envs
+        # set for curriculum learing, training from the first taskself.current_task_idx = [0] * self.num_envs
+        self.max_task_idx = [1] * self.num_envs
         self.previous_info = [None] * self.num_envs
         self.task_descriptions = [None] * self.num_envs
 
@@ -360,7 +361,7 @@ class CalvinEnv(gym.Env):
         subtask_success = self._check_subtask_success(info_lists)
         self._reset_current_task(subtask_success, info_lists)
         infos = list_of_dict_to_dict_of_list(info_lists)
-        terminations = np.array(self.current_task_idx) == 5
+        terminations = np.array(self.current_task_idx) == self.max_task_idx[0]
         truncations = self.elapsed_steps >= self.cfg.max_episode_steps
         obs = self._wrap_obs(raw_obs)
 
@@ -511,7 +512,7 @@ class CalvinEnv(gym.Env):
         for env_id, success in enumerate(subtask_success):
             if success:
                 self.current_task_idx[env_id] += 1
-                if self.current_task_idx[env_id] <= 4:
+                if self.current_task_idx[env_id] <= self.max_task_idx[0] - 1:
                     self.previous_info[env_id] = info_lists[env_id]
                     self.current_task[env_id] = self.task_sequence[env_id][
                         self.current_task_idx[env_id]
@@ -520,4 +521,14 @@ class CalvinEnv(gym.Env):
                         self.task_suite.get_task_descriptions(self.current_task[env_id])
                     )
                 else:
-                    self.current_task_idx[env_id] = 5
+                    self.current_task_idx[env_id] = self.max_task_idx[0]
+
+    def _set_max_subtasks_idx(self, success_rate=0.0):
+        """
+        Docstring for _set_max_subtasks_idx
+        :param success_rate: the success rate of rollout episodes
+        """
+        if success_rate >= 0.8 and self.max_task_idx[0] < 5:
+            self.max_task_idx = [
+                x + 1 for x in self.max_task_idx
+            ]  # add for each environments

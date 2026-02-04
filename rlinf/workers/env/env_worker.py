@@ -394,6 +394,15 @@ class EnvWorker(Worker):
 
         return env_metrics
 
+    def update_success_rate(self, success_rate: float):
+        """Update the success rate for all environments to enable dynamic task adjustment."""
+        for env in self.env_list:
+            if hasattr(env, "_set_max_subtasks_idx"):
+                env._set_max_subtasks_idx(success_rate)
+        for env in self.eval_env_list:
+            if hasattr(env, "_set_max_subtasks_idx"):
+                env._set_max_subtasks_idx(success_rate)
+
     def evaluate(self, input_channel: Channel, output_channel: Channel):
         eval_metrics = defaultdict(list)
 

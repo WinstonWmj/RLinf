@@ -232,6 +232,8 @@ class EmbodiedRunner:
                 results for results in env_handle.wait() if results is not None
             ]
             env_metrics = compute_evaluate_metrics(env_results_list)
+            # Update success rate to env workers for dynamic task adjustment
+            self.env.update_success_rate(env_metrics.get("success_once", 0.0))
             env_metrics = {f"env/{k}": v for k, v in env_metrics.items()}
 
             rollout_metrics = {
