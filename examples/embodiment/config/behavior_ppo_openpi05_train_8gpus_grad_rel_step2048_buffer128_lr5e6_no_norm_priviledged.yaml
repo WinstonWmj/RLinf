@@ -44,7 +44,6 @@ runner:
   ckpt_path: null  # Optional: path to a .pt checkpoint. If not None, it will be loaded after the model is instantiated (for evaluation).
 
 algorithm:
-
   normalize_advantages: True
   kl_penalty: kl  # how to estimate kl divergence: kl or kl_penalty
   group_size: 1
@@ -55,7 +54,7 @@ algorithm:
   reward_type: chunk_level
   logprob_type: chunk_level
   entropy_type: token_level
-  update_epoch: 4
+  update_epoch: 1
   adv_type: gae
   loss_type: actor_critic
   loss_agg_func: "token-mean" 
@@ -94,12 +93,13 @@ env:
   group_name: "EnvGroup"
 
   train:
+    use_privileged_teacher_obs: True
     total_num_envs: 16
     max_episode_steps: 2048
     max_steps_per_rollout_epoch: 2048
     reward_coef: ${algorithm.reward_coef}
     use_rel_reward: true
-    num_env_subprocess: 2
+    num_env_subprocess: 1
     video_cfg:
       save_video: True
       video_base_dir: ${runner.logger.log_path}/video/train
@@ -120,6 +120,7 @@ env:
           reward_mode: task
           task_specific_reward_name: turning_on_radio
   eval:
+    use_privileged_teacher_obs: True
     total_num_envs: 8
     auto_reset: False
     ignore_terminations: True
@@ -188,6 +189,9 @@ actor:
       value_after_vlm: True  # pi05 特定参数，需要打开
       ignore_last: True  # 避免机械臂乱甩的问题
       num_steps: 8  # 5的话初始成功率没那么高
+      use_privileged_teacher_obs: True
+      privileged_teacher_obs_dim: 226
+      privileged_teacher_state_dim: 23
   
   optim:
     lr: 5.0e-6

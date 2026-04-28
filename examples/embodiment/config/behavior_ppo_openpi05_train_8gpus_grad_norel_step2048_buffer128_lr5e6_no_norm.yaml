@@ -98,7 +98,7 @@ env:
     max_episode_steps: 2048
     max_steps_per_rollout_epoch: 2048
     reward_coef: ${algorithm.reward_coef}
-    use_rel_reward: true
+    use_rel_reward: false
     num_env_subprocess: 2
     video_cfg:
       save_video: True

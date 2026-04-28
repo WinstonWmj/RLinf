@@ -16,7 +16,7 @@ runner:
   only_eval: True
 
 algorithm:
-  eval_rollout_epoch: 10
+  eval_rollout_epoch: 2
   reward_coef: 2048
 
 env:
@@ -39,7 +39,7 @@ env:
     #     online_object_sampling: False
     #     use_presampled_robot_pose: True
   eval:
-    total_num_envs: 8
+    total_num_envs: 16
     max_episode_steps: 4096
     max_steps_per_rollout_epoch: 4096
     video_cfg:

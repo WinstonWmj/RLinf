@@ -1,0 +1,152 @@
+defaults:
+  - behavior_ppo_openpi_pi05
+
+hydra:
+  searchpath:
+    - file://${oc.env:EMBODIED_PATH}/config/
+
+cluster:
+  num_nodes: 1
+  component_placement:
+    rollout:
+      placement: 0-3
+    actor:
+      placement: 0-3
+    env:
+      placement: 4-7
+
+runner:
+  logger:
+    experiment_name: "behavior_ppo_openpi05_train"
+  max_epochs: 1000
+  max_steps: 1000
+
+algorithm:
+  rollout_epoch: 2
+  eval_rollout_epoch: 1
+  reward_coef: 1.0
+
+env:
+  group_name: "EnvGroup"
+
+  train:
+    total_num_envs: 16
+    max_episode_steps: 2048
+    max_steps_per_rollout_epoch: 2048
+    reward_coef: ${algorithm.reward_coef}
+    ignore_terminations: False
+    video_cfg:
+      save_video: True
+      # max_buffered_frames: 4096  # set to 4096 to save full video in one mp4 file
+      video_base_dir: ${runner.logger.log_path}/video/train
+    skip_intermediate_obs_in_chunk: False  # set to False to save full video
+    omni_config:
+      robots:
+        - type: R1Pro
+          name: robot_r1
+          action_normalize: False
+          grasping_mode: physical
+          include_sensor_names: null
+          exclude_sensor_names: null
+          self_collisions: False
+          action_type: continuous
+          obs_modalities: ['rgb', 'proprio']
+          reset_joint_pos:
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.025, -1.45, -0.47, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.05, 0.05, 0.05]
+          controller_config:
+            base:
+              name: HolonomicBaseJointController
+              motor_type: velocity
+              vel_kp: 150
+              command_input_limits: [[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]]
+              command_output_limits: [[-0.75, -0.75, -1.0], [0.75, 0.75, 1.0]]
+              use_impedances: False
+            trunk:
+              name: JointController
+              motor_type: position
+              pos_kp: 150
+              command_input_limits: null
+              command_output_limits: null
+              use_impedances: False
+              use_delta_commands: False
+            arm_left:
+              name: JointController
+              motor_type: position
+              pos_kp: 150
+              command_input_limits: null
+              command_output_limits: null
+              use_impedances: False
+              use_delta_commands: False
+            arm_right:
+              name: JointController
+              motor_type: position
+              pos_kp: 150
+              command_input_limits: null
+              command_output_limits: null
+              use_impedances: False
+              use_delta_commands: False
+            gripper_left:
+              name: MultiFingerGripperController
+              mode: smooth
+              command_input_limits: default
+              command_output_limits: default
+            gripper_right:
+              name: MultiFingerGripperController
+              mode: smooth
+              command_input_limits: default
+              command_output_limits: default
+      env:
+        action_frequency: 30
+        physics_frequency: 120
+        rendering_frequency: 30
+      task:
+        activity_instance_dir: ${oc.env:OMNIGIBSON_DATA_PATH}/2025-challenge-task-instances/scenes/house_double_floor_lower/json/house_double_floor_lower_task_turning_on_radio_instances
+        activity_instance_id: 242
+        instance_file_format: tro_state
+        instance_resample_mode: disabled
+        online_object_sampling: False
+        use_presampled_robot_pose: True
+        reward_config:
+          reward_mode: task
+          task_specific_reward_name: turning_on_radio
+    num_env_subprocess: 2
+  eval:
+    total_num_envs: 8
+    max_episode_steps: 4096
+    max_steps_per_rollout_epoch: 4096
+    video_cfg:
+      save_video: True
+      video_base_dir: ${runner.logger.log_path}/video/eval
+    skip_intermediate_obs_in_chunk: False  # set to False to save full video
+    omni_config:
+      env:
+        action_frequency: 30
+        physics_frequency: 120
+        rendering_frequency: 30
+      task:
+        activity_instance_dir: ${oc.env:OMNIGIBSON_DATA_PATH}/2025-challenge-task-instances/scenes/house_double_floor_lower/json/house_double_floor_lower_task_turning_on_radio_instances
+        activity_instance_id: [242, 295, 211, 203, 109, 181, 197, 187]  #  214, 139
+        instance_file_format: tro_state
+        instance_resample_mode: offline
+        online_object_sampling: False
+        use_presampled_robot_pose: True
+        reward_config:
+          reward_mode: task
+          task_specific_reward_name: turning_on_radio
+
+actor:
+  micro_batch_size: 4
+  global_batch_size: 512
+  optim:
+    lr: 5.0e-6
+    value_lr: 1.0e-4
+  model:
+    # trainable_action_groups: ["arms"]  # 只让双臂对应的 action 维度参与 PPO loss
+    openpi:
+      noise_level: 0.3  # 0.5会影响初始成功率
+      value_after_vlm: True  # 这个值需要打开，不然 value head是接在 action head 之后的
+      ignore_last: True  # 避免机械臂乱甩的问题
+      num_steps: 8
+
+rollout:
+  sync_weight_load_instant: False # if True, load weight instantly, otherwise save all buckets to CPU and load weight after receiving all buckets to save gpu memory.
