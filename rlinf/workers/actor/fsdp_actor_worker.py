@@ -1553,6 +1553,14 @@ class EmbodiedFSDPActor(FSDPModelManager, Worker):
                         "compute_explained_variance": False,
                     }
                     loss, metrics_data = policy_loss(**kwargs)
+                    model_metrics = output_dict.get("metrics", None)
+                    if model_metrics is not None:
+                        for key, value in model_metrics.items():
+                            metrics_data[key] = (
+                                value.detach().item()
+                                if isinstance(value, torch.Tensor)
+                                else value
+                            )
                     metrics_data.pop("critic/explained_variance", None)
                     micro_ev_stats = _explained_variance_stats_from_loss_kwargs(kwargs)
                     if micro_ev_stats is not None:

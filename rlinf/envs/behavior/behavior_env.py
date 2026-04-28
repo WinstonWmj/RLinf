@@ -67,16 +67,49 @@ def _behavior_env_worker(cfg: DictConfig, conn, num_envs: int):
         step_supports_kwargs = any(
             param.kind == inspect.Parameter.VAR_KEYWORD for param in step_params
         )
-        step_supports_get_obs = step_supports_kwargs or "get_obs" in step_signature.parameters
-        step_supports_render = step_supports_kwargs or "render" in step_signature.parameters
+        step_supports_get_obs = (
+            step_supports_kwargs or "get_obs" in step_signature.parameters
+        )
+        step_supports_render = (
+            step_supports_kwargs or "render" in step_signature.parameters
+        )
         skip_intermediate_obs_in_chunk = bool(
             OmegaConf.select(cfg, "skip_intermediate_obs_in_chunk", default=False)
         )
+        use_privileged_teacher_obs = bool(
+            OmegaConf.select(cfg, "use_privileged_teacher_obs", default=False)
+        )
+        privileged_obs_builder = None
+        if use_privileged_teacher_obs:
+            from rlinf.envs.behavior.privileged_obs import (
+                PRIVILEGED_TEACHER_OBS_INFO_KEY,
+                BehaviorPrivilegedTeacherObsBuilder,
+            )
+
+            privileged_obs_builder = BehaviorPrivilegedTeacherObsBuilder(
+                logger=get_logger()
+            )
 
         def _step_env(actions, need_obs: bool):
             if step_supports_get_obs and step_supports_render:
                 return env.step(actions, get_obs=need_obs, render=need_obs)
             return env.step(actions)
+
+        def _attach_privileged_obs(infos, actions=None):
+            if privileged_obs_builder is None or infos is None:
+                return infos
+            env_actions = [None] * len(env.envs) if actions is None else actions
+            for info, env_i, action_i in zip(infos, env.envs, env_actions):
+                if isinstance(info, dict):
+                    info[PRIVILEGED_TEACHER_OBS_INFO_KEY] = (
+                        privileged_obs_builder.build(
+                            env_i,
+                            action_i,
+                        )
+                        .detach()
+                        .cpu()
+                    )
+            return infos
 
         conn.send(
             {
@@ -91,18 +124,19 @@ def _behavior_env_worker(cfg: DictConfig, conn, num_envs: int):
             if cmd == "reset":
                 instance_loader.prepare_reset(env)
                 raw_obs, infos = env.reset()
+                infos = _attach_privileged_obs(infos)
                 conn.send({"type": "ok", "result": (raw_obs, infos)})
 
             elif cmd == "step":
                 result = env.step(payload)
+                raw_obs, rewards, terminations, truncations, infos = result
+                infos = _attach_privileged_obs(infos, payload)
+                result = (raw_obs, rewards, terminations, truncations, infos)
                 conn.send({"type": "ok", "result": result})
 
             elif cmd == "chunk_step":
                 chunk_actions = payload["chunk_actions"]
                 chunk_size = chunk_actions.shape[1]
-                skip_intermediate = bool(
-                    payload.get("skip_intermediate_obs_in_chunk", False)
-                )
 
                 raw_obs_list = []
                 chunk_rewards = []
@@ -117,6 +151,8 @@ def _behavior_env_worker(cfg: DictConfig, conn, num_envs: int):
                     raw_obs, step_rewards, terminations, truncations, infos = _step_env(
                         actions, need_obs=need_obs
                     )
+                    if need_obs:
+                        infos = _attach_privileged_obs(infos, actions)
                     if not need_obs:
                         # Normalize intermediate-step observations to None so downstream
                         # code can skip parsing cleanly.
@@ -184,7 +220,9 @@ class BehaviorEnv(gym.Env):
         self._is_start = True
         self.use_thread_worker = self.cfg.get("use_thread_worker", False)
         self.num_env_subprocess = int(self.cfg.get("num_env_subprocess", 1))
-        self.env_shard_size = self._split_num_envs(self.num_envs, self.num_env_subprocess)
+        self.env_shard_size = self._split_num_envs(
+            self.num_envs, self.num_env_subprocess
+        )
         self.env_process_list = []
         self.parent_conn_list = []
         self.child_conn_list = []
@@ -207,9 +245,13 @@ class BehaviorEnv(gym.Env):
         """Split ``num_envs`` across ``num_processes`` shards as evenly as possible."""
         assert num_processes > 0, f"num_processes({num_processes}) must be positive"
         if self.use_thread_worker and num_processes > 1:
-            self.logger.warning(f"assign num_processes({num_processes}) to 1 when use_thread_worker is True")
+            self.logger.warning(
+                f"assign num_processes({num_processes}) to 1 when use_thread_worker is True"
+            )
             num_processes = 1
-        assert num_envs % num_processes == 0, f"num_envs({num_envs}) must be divisible by num_processes({num_processes})"
+        assert num_envs % num_processes == 0, (
+            f"num_envs({num_envs}) must be divisible by num_processes({num_processes})"
+        )
         return num_envs // num_processes
 
     def _load_tasks_cfg(self, activity_name: str):
@@ -287,9 +329,7 @@ class BehaviorEnv(gym.Env):
         if actions is None:
             return [None] * self.num_env_subprocess
         s = self.env_shard_size
-        return [
-            actions[i * s : (i + 1) * s] for i in range(self.num_env_subprocess)
-        ]
+        return [actions[i * s : (i + 1) * s] for i in range(self.num_env_subprocess)]
 
     def _merge_step_results(self, shard_results: list):
         raw_obs = []
@@ -352,7 +392,9 @@ class BehaviorEnv(gym.Env):
     def _call_all_subprocs(self, cmd: str, payloads: list) -> list:
         """Send the same command to every shard; recv in parallel to avoid pipe backpressure."""
         n = len(self.parent_conn_list)
-        assert len(payloads) == n, f"payloads length {len(payloads)} != num subprocesses {n}"
+        assert len(payloads) == n, (
+            f"payloads length {len(payloads)} != num subprocesses {n}"
+        )
         for conn, payload in zip(self.parent_conn_list, payloads):
             conn.send((cmd, payload))
 
@@ -434,11 +476,60 @@ class BehaviorEnv(gym.Env):
             "state": state,
         }
 
-    def _wrap_obs(self, obs_list):
+    def _extract_privileged_obs(self, infos):
+        from rlinf.envs.behavior.privileged_obs import (
+            PRIVILEGED_TEACHER_OBS_INFO_KEY,
+        )
+
+        if infos is None:
+            return None
+        privileged_obs = []
+        for info in infos:
+            if (
+                not isinstance(info, dict)
+                or PRIVILEGED_TEACHER_OBS_INFO_KEY not in info
+            ):
+                return None
+            privileged_obs.append(info[PRIVILEGED_TEACHER_OBS_INFO_KEY])
+        return torch.stack(
+            [
+                obs if torch.is_tensor(obs) else torch.as_tensor(obs)
+                for obs in privileged_obs
+            ],
+            axis=0,
+        )
+
+    def _extract_privileged_metrics(self, info):
+        if not self.cfg.get("use_privileged_teacher_obs", False):
+            return {}
+        from rlinf.envs.behavior.privileged_obs import (
+            PRIVILEGED_TEACHER_OBS_INFO_KEY,
+            BehaviorPrivilegedTeacherObsBuilder,
+        )
+
+        if not isinstance(info, dict) or PRIVILEGED_TEACHER_OBS_INFO_KEY not in info:
+            return {}
+        return BehaviorPrivilegedTeacherObsBuilder().summarize(
+            info[PRIVILEGED_TEACHER_OBS_INFO_KEY]
+        )
+
+    def _wrap_obs(self, obs_list, infos=None):
         extracted_obs_list = []
         for obs in obs_list:
             extracted_obs = self._extract_obs_image(obs)
             extracted_obs_list.append(extracted_obs)
+
+        proprio_states = torch.stack(
+            [obs["state"] for obs in extracted_obs_list], axis=0
+        )  # [N_ENV, proprio_dim]
+        states = proprio_states
+        privileged_states = self._extract_privileged_obs(infos)
+        if self.cfg.get("use_privileged_teacher_obs", False):
+            assert privileged_states is not None, (
+                "use_privileged_teacher_obs=True but privileged observations were "
+                "not attached by the BEHAVIOR worker."
+            )
+            states = privileged_states
 
         obs = {
             "main_images": torch.stack(
@@ -448,15 +539,16 @@ class BehaviorEnv(gym.Env):
                 [obs["wrist_images"] for obs in extracted_obs_list], axis=0
             ),  # [N_ENV, N_IMG, H, W, C]
             "task_descriptions": [self.task_description for i in range(self.num_envs)],
-            "states": torch.stack(
-                [obs["state"] for obs in extracted_obs_list], axis=0
-            ),  # [N_ENV, 32]
+            "states": states,
         }
+        if privileged_states is not None:
+            obs["proprio_states"] = proprio_states
+            obs["privileged_states"] = privileged_states
         return obs
 
     def reset(self):
         raw_obs, infos = self._call_subproc("reset")
-        obs = self._wrap_obs(raw_obs)
+        obs = self._wrap_obs(raw_obs, infos)
         rewards = torch.zeros(self.num_envs, dtype=bool)
         infos = self._record_metrics(rewards, infos)
         self._reset_metrics()
@@ -470,7 +562,7 @@ class BehaviorEnv(gym.Env):
         raw_obs, rewards, terminations, truncations, infos = self._call_subproc(
             "step", actions
         )
-        obs = self._wrap_obs(raw_obs)
+        obs = self._wrap_obs(raw_obs, infos)
         rewards = self._calc_step_reward(rewards, infos)
         infos = self._record_metrics(rewards, infos)
         if self.ignore_terminations:
@@ -518,10 +610,12 @@ class BehaviorEnv(gym.Env):
             ):
                 obs_list.append(None)
             else:
-                obs_list.append(self._wrap_obs(raw_obs))
+                obs_list.append(self._wrap_obs(raw_obs, raw_infos_list[i]))
             infos_list.append(infos)
 
-        chunk_rewards = torch.stack(scaled_rewards_list, dim=1)  # [num_envs, chunk_steps]
+        chunk_rewards = torch.stack(
+            scaled_rewards_list, dim=1
+        )  # [num_envs, chunk_steps]
         raw_terminations = torch.stack(
             raw_terminations_list, dim=1
         )  # [num_envs, chunk_steps]
@@ -622,6 +716,7 @@ class BehaviorEnv(gym.Env):
             episode_info = {
                 "episode_length": episode_length,
             }
+            episode_info.update(self._extract_privileged_metrics(info))
             self.returns[env_idx] += reward
             self.success_once[env_idx] = self.success_once[env_idx] | step_success
             episode_info["success_once"] = self.success_once[env_idx].clone()
@@ -629,10 +724,9 @@ class BehaviorEnv(gym.Env):
 
             episode_info["return"] = self.returns[env_idx].clone()
             episode_info["episode_len"] = episode_length
-            episode_info["reward"] = (
-                episode_info["return"]
-                / torch.clamp(to_tensor(episode_length), min=1).to(self.device)
-            )
+            episode_info["reward"] = episode_info["return"] / torch.clamp(
+                to_tensor(episode_length), min=1
+            ).to(self.device)
 
             info_lists.append(episode_info)
 

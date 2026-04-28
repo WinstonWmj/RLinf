@@ -97,6 +97,10 @@ class EnvOutput:
             obs["extra_view_images"] if "extra_view_images" in obs else None
         )
         states = obs["states"] if "states" in obs else None
+        proprio_states = obs["proprio_states"] if "proprio_states" in obs else None
+        privileged_states = (
+            obs["privileged_states"] if "privileged_states" in obs else None
+        )
         task_descriptions = (
             list(obs["task_descriptions"])
             if "task_descriptions" in obs and obs["task_descriptions"] is not None
@@ -108,6 +112,8 @@ class EnvOutput:
             "wrist_images": wrist_image_tensor,  # [N_ENV, H, W, C] or [N_ENV, N_IMG, H, W, C]
             "extra_view_images": extra_view_image_tensor,  # [N_ENV, N_IMG, H, W, C]
             "states": states,
+            "proprio_states": proprio_states,
+            "privileged_states": privileged_states,
             "task_descriptions": task_descriptions,
         }
 

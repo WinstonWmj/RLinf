@@ -30,6 +30,9 @@ openpi:
   noise_method: "flow_sde"
   add_value_head: ${actor.model.add_value_head}
   detach_critic_input: False
+  use_privileged_teacher_obs: False
+  privileged_teacher_obs_dim: 226
+  privileged_teacher_state_dim: 23
   # DSRL specific configurations (disabled by default)
   use_dsrl: False
   dsrl_state_dim: 8

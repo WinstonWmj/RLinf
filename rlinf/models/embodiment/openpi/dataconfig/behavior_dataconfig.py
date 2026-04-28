@@ -73,6 +73,7 @@ class LeRobotBehaviorDataConfig(DataConfigFactory):
                     model_type=model_config.model_type,
                     extract_state_from_proprio=self.extract_state_from_proprio,
                     use_all_wrist_images=self.use_all_wrist_images,
+                    state_dim=model_config.action_dim,
                 )
             ],
             outputs=[behavior_policy.BehaviorOutputs()],

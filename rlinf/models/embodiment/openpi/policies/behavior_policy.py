@@ -33,7 +33,8 @@ R1PRO_PROPRIO_INDICES = {
 def make_behavior_example() -> dict:
     """Creates a random input example for the Behavior policy."""
     return {
-        "observation/state": np.random.rand(8),
+        "observation/state": np.random.rand(32),
+        "observation/privileged_state": np.random.rand(226),
         "observation/image": np.random.randint(256, size=(224, 224, 3), dtype=np.uint8),
         "observation/wrist_image": np.random.randint(
             256, size=(224, 224, 3), dtype=np.uint8
@@ -90,6 +91,7 @@ class BehaviorInputs(transforms.DataTransformFn):
     model_type: _model.ModelType
     extract_state_from_proprio: bool = False
     use_all_wrist_images: bool = False
+    state_dim: int = 32
 
     def __call__(self, data: dict) -> dict:
         # Possibly need to parse images to uint8 (H,W,C) since LeRobot automatically
@@ -113,10 +115,12 @@ class BehaviorInputs(transforms.DataTransformFn):
             if self.extract_state_from_proprio
             else data["observation/state"]
         )
+        privileged_state = data.get("observation/privileged_state")
+        state = transforms.pad_to_dim(state, self.state_dim)
 
         # Create inputs dict. Do not change the keys in the dict below.
         inputs = {
-            "state": state[:32],
+            "state": state,
             "image": {
                 "base_0_rgb": base_image,
                 "left_wrist_0_rgb": wrist_image[0, ...],
@@ -132,6 +136,8 @@ class BehaviorInputs(transforms.DataTransformFn):
                 else np.False_,
             },
         }
+        if privileged_state is not None:
+            inputs["privileged_state"] = privileged_state
 
         # Pad actions to the model action dimension. Keep this for your own dataset.
         # Actions are only available during training.

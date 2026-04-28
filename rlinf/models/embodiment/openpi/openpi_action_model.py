@@ -21,6 +21,7 @@ from typing import Any, Literal
 import jax
 import numpy as np
 import torch
+from torch import nn
 from openpi import transforms as _transforms
 from openpi.models import model as _model
 from openpi.models.pi0_config import Pi0Config
@@ -80,6 +81,11 @@ class OpenPi0Config(Pi0Config):
 
     # ===== NFT-specific parameters =====
     is_nft: bool = False
+
+    # ===== BEHAVIOR privileged teacher observation parameters =====
+    use_privileged_teacher_obs: bool = False
+    privileged_teacher_obs_dim: int = 226
+    privileged_teacher_state_dim: int = 23
 
 
 class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
@@ -161,6 +167,25 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
         self.use_vlm_value = getattr(self.config, "value_after_vlm", False) and getattr(
             self.config, "add_value_head", False
         )
+        if self.config.use_privileged_teacher_obs:
+            # Match the OpenPI backbone dtype loaded below. These parameters are
+            # created before checkpoint loading / FSDP wrapping, so leaving them
+            # at PyTorch's default float32 makes FSDP flatten mixed bf16/fp32
+            # parameters in the same handle.
+            _privileged_dtype = torch.bfloat16
+            self.privileged_state_proj = nn.Sequential(
+                nn.LayerNorm(self.config.privileged_teacher_obs_dim),
+                nn.Linear(
+                    self.config.privileged_teacher_obs_dim,
+                    self.config.privileged_teacher_state_dim * 2,
+                ),
+                nn.SiLU(),
+                nn.Linear(
+                    self.config.privileged_teacher_state_dim * 2,
+                    self.config.privileged_teacher_state_dim,
+                ),
+            ).to(dtype=_privileged_dtype)
+        self._last_privileged_state_metrics = None
         # noise head for flow-noise
         if self.config.noise_method == "flow_noise":
             self.noise_head = ExploreNoiseNet(
@@ -349,6 +374,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
             )
             processed_obs = self.input_transform(obs_dict, transpose=False)
             processed_obs = self.precision_processor(processed_obs)
+            processed_obs = self._apply_privileged_state_projection(processed_obs)
             observation = _model.Observation.from_dict(processed_obs)
         else:
             obs_dict["actions"] = batch["action"].reshape(
@@ -361,6 +387,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
             if "tokenized_prompt_mask" in batch:
                 processed_obs["tokenized_prompt_mask"] = batch["tokenized_prompt_mask"]
             processed_obs = self.precision_processor(processed_obs)
+            processed_obs = self._apply_privileged_state_projection(processed_obs)
             observation = _model.Observation.from_dict(processed_obs)
             actions = processed_obs["actions"].clone()
             processed_obs.pop("actions")
@@ -385,6 +412,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
         denoise_inds = forward_inputs["denoise_inds"]
         # input transform
         observation = self.input_transform(forward_inputs, transpose=False)
+        observation = self._apply_privileged_state_projection(observation)
         observation = _model.Observation.from_dict(observation)
         images, img_masks, lang_tokens, lang_masks, state = (
             self._preprocess_observation(observation, train=False)
@@ -417,11 +445,15 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
             :, None
         ]  # [:,None] to align with loss-mask shape
         value_t = value_t.mean(dim=-1, keepdim=False)
-        return {
+        output = {
             "logprobs": log_probs,
             "values": value_t,
             "entropy": entropy,
         }
+        privileged_metrics = self._consume_privileged_state_metrics()
+        if privileged_metrics:
+            output["metrics"] = privileged_metrics
+        return output
 
     def forward_nft(
         self,
@@ -430,6 +462,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
     ) -> dict[str, Any]:
         """Compute velocity v_theta at explicit (x_t, timesteps) for NFT loss."""
         observation = self.input_transform(forward_inputs, transpose=False)
+        observation = self._apply_privileged_state_projection(observation)
         observation = _model.Observation.from_dict(observation)
         images, img_masks, lang_tokens, lang_masks, state = (
             self._preprocess_observation(observation, train=False)
@@ -486,12 +519,19 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
             processed_obs["observation/state_ee_rot"] = state[:, 3:6]
             processed_obs["observation/state_gripper"] = state[:, 6:7]
         else:
-            processed_obs["observation/state"] = env_obs["states"]
+            processed_obs["observation/state"] = env_obs.get(
+                "proprio_states",
+                env_obs["states"],
+            )
+            if self.config.use_privileged_teacher_obs:
+                processed_obs["observation/privileged_state"] = env_obs[
+                    "privileged_states"
+                ]
         # wrist image observation
-        if env_obs["wrist_images"] is not None:
+        if env_obs.get("wrist_images") is not None:
             processed_obs["observation/wrist_image"] = env_obs["wrist_images"]
         # extra view image observation
-        if env_obs["extra_view_images"] is not None:
+        if env_obs.get("extra_view_images") is not None:
             processed_obs["observation/extra_view_image"] = env_obs["extra_view_images"]
         # store used keys
         return processed_obs
@@ -515,6 +555,70 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
                     ).contiguous()
         return processed_obs
 
+    def _apply_privileged_state_projection(self, processed_obs):
+        self._last_privileged_state_metrics = None
+        if not self.config.use_privileged_teacher_obs:
+            processed_obs.pop("privileged_state", None)
+            return processed_obs
+        privileged_state = processed_obs.pop("privileged_state", None)
+        if privileged_state is None:
+            return processed_obs
+
+        device = next(self.parameters()).device
+        if not torch.is_tensor(privileged_state):
+            privileged_state = torch.as_tensor(privileged_state)
+        projection_dtype = next(self.privileged_state_proj.parameters()).dtype
+        privileged_state = privileged_state.to(
+            device=device,
+            dtype=projection_dtype,
+        )
+        assert privileged_state.shape[-1] == self.config.privileged_teacher_obs_dim, (
+            "privileged_state expected last dim "
+            f"{self.config.privileged_teacher_obs_dim}, got {privileged_state.shape[-1]}"
+        )
+        assert torch.isfinite(privileged_state).all(), (
+            "privileged_state contains NaN/Inf before projection"
+        )
+
+        projected_state = self.privileged_state_proj(privileged_state)
+        assert projected_state.shape[-1] == self.config.privileged_teacher_state_dim, (
+            "projected privileged_state expected last dim "
+            f"{self.config.privileged_teacher_state_dim}, got {projected_state.shape[-1]}"
+        )
+        assert torch.isfinite(projected_state).all(), (
+            "projected privileged_state contains NaN/Inf"
+        )
+
+        state = processed_obs["state"]
+        state_dtype = state.dtype if torch.is_tensor(state) else torch.float32
+        if not torch.is_tensor(state):
+            state = torch.as_tensor(state, device=device)
+        state = state.to(device=device, dtype=state_dtype).contiguous()
+        assert state.shape[-1] >= projected_state.shape[-1], (
+            "OpenPI transformed state dim must be >= projected privileged_state dim, "
+            f"got state dim {state.shape[-1]} and projected dim {projected_state.shape[-1]}"
+        )
+        state = state.clone()
+        state[..., : projected_state.shape[-1]] = projected_state.to(dtype=state_dtype)
+        processed_obs["state"] = state.contiguous()
+        with torch.no_grad():
+            self._last_privileged_state_metrics = {
+                "actor/privileged/input_abs_mean": privileged_state.abs().mean(),
+                "actor/privileged/input_l2": torch.linalg.vector_norm(
+                    privileged_state, dim=-1
+                ).mean(),
+                "actor/privileged/projected_state_abs_mean": projected_state.abs().mean(),
+                "actor/privileged/projected_state_l2": torch.linalg.vector_norm(
+                    projected_state, dim=-1
+                ).mean(),
+            }
+        return processed_obs
+
+    def _consume_privileged_state_metrics(self):
+        metrics = self._last_privileged_state_metrics
+        self._last_privileged_state_metrics = None
+        return metrics or {}
+
     def predict_action_batch(
         self,
         env_obs,
@@ -529,6 +633,7 @@ class OpenPi0ForRLActionPrediction(PI0Pytorch, BasePolicy):
         processed_obs = self.precision_processor(
             processed_obs
         )  # obs precision processor
+        processed_obs = self._apply_privileged_state_projection(processed_obs)
         observation = _model.Observation.from_dict(processed_obs)
 
         is_dsrl_active = self.config.use_dsrl
